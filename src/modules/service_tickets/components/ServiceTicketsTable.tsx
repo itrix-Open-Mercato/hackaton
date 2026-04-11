@@ -181,6 +181,16 @@ export default function ServiceTicketsTable({ filters }: { filters: TicketFilter
             options: PRIORITY_VALUES.map((value) => ({ value, label: t(PRIORITY_I18N_KEYS[value]) })),
           },
           {
+            id: 'visit_date',
+            label: t('service_tickets.table.filters.visitDate'),
+            type: 'dateRange',
+          },
+          {
+            id: 'created_at',
+            label: t('service_tickets.table.filters.createdAt'),
+            type: 'dateRange',
+          },
+          {
             id: 'customer_entity_id',
             label: t('service_tickets.table.filters.company'),
             type: 'combobox',
