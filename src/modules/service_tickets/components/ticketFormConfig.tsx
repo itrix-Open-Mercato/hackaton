@@ -1,6 +1,7 @@
 "use client"
 
-import type { CrudField, CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
+import * as React from 'react'
+import type { CrudField, CrudFormGroup, CrudCustomFieldRenderProps } from '@open-mercato/ui/backend/CrudForm'
 import type { ServiceTicketListItem } from '../types'
 import CustomerCascadeSelect from './CustomerCascadeSelect'
 import MachineCascadeSelect from './MachineCascadeSelect'
@@ -12,6 +13,59 @@ import {
   STATUS_I18N_KEYS,
   STATUS_VALUES,
 } from '../lib/constants'
+
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  if (!apiKey || !address.trim()) return null
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=pl&language=pl&key=${apiKey}`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.status !== 'OK' || !data.results?.[0]) return null
+    const { lat, lng } = data.results[0].geometry.location
+    return { lat, lng }
+  } catch {
+    return null
+  }
+}
+
+function AddressField({ id, value, error, disabled, setValue, setFormValue }: CrudCustomFieldRenderProps) {
+  const [geocoding, setGeocoding] = React.useState(false)
+
+  const handleBlur = async () => {
+    const address = String(value ?? '').trim()
+    if (!address || !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return
+    setGeocoding(true)
+    const coords = await geocodeAddress(address)
+    console.log(coords);
+    setGeocoding(false)
+    if (coords) {
+      setFormValue?.('latitude', String(coords.lat))
+      setFormValue?.('longitude', String(coords.lng))
+    }
+  }
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type="text"
+        value={String(value ?? '')}
+        disabled={disabled || geocoding}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleBlur}
+        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      {geocoding && (
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
+          Geocoding…
+        </span>
+      )}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  )
+}
 
 export type TicketFormValues = {
   id: string
@@ -71,8 +125,8 @@ export function buildTicketFields(
     {
       id: 'address',
       label: t('service_tickets.form.fields.address.label'),
-      type: 'text',
-      placeholder: t('service_tickets.form.fields.address.placeholder'),
+      type: 'custom',
+      component: (props) => <AddressField {...props} />,
     },
     {
       id: 'latitude',
