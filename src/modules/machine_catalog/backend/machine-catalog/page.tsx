@@ -33,13 +33,23 @@ type ProfilesResponse = {
   totalPages: number
 }
 
+function readString(item: Record<string, unknown>, camelKey: string, snakeKey: string): string | null {
+  const value = item[camelKey] ?? item[snakeKey]
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function readBoolean(item: Record<string, unknown>, camelKey: string, snakeKey: string): boolean {
+  const value = item[camelKey] ?? item[snakeKey]
+  return value === true
+}
+
 function mapApiProfile(item: Record<string, unknown>): ProfileRow {
   return {
-    id: typeof item.id === 'string' ? item.id : '',
-    machineFamily: typeof item.machine_family === 'string' ? item.machine_family : null,
-    modelCode: typeof item.model_code === 'string' ? item.model_code : null,
-    catalogProductId: typeof item.catalog_product_id === 'string' ? item.catalog_product_id : null,
-    isActive: item.is_active === true,
+    id: readString(item, 'id', 'id') ?? '',
+    machineFamily: readString(item, 'machineFamily', 'machine_family'),
+    modelCode: readString(item, 'modelCode', 'model_code'),
+    catalogProductId: readString(item, 'catalogProductId', 'catalog_product_id'),
+    isActive: readBoolean(item, 'isActive', 'is_active'),
   }
 }
 
@@ -80,7 +90,7 @@ export default function MachineCatalogPage() {
         const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) })
         if (search) params.set('search', search)
         const fallback: ProfilesResponse = { items: [], total: 0, page, totalPages: 1 }
-        const call = await apiCall<ProfilesResponse>(`/api/machine-catalog/machine-profiles?${params.toString()}`, undefined, { fallback })
+        const call = await apiCall<ProfilesResponse>(`/api/machine_catalog/machine-profiles?${params.toString()}`, undefined, { fallback })
         if (!call.ok) { flash('Failed to load machine catalog profiles.', 'error'); return }
         const payload = call.result ?? fallback
         if (!cancelled) {
@@ -103,7 +113,7 @@ export default function MachineCatalogPage() {
     const confirmed = await confirm({ title: `Delete machine profile "${label}"?`, variant: 'destructive' })
     if (!confirmed) return
     try {
-      await deleteCrud('machine-catalog/machine-profiles', row.id)
+      await deleteCrud('machine_catalog/machine-profiles', row.id)
       flash('Machine profile deleted.', 'success')
       setPage(1)
       router.refresh()

@@ -59,7 +59,7 @@ export default function EditMachineProfilePage({ params }: { params?: { id?: str
       setLoading(true)
       setErr(null)
       try {
-        const data = await fetchCrudList<ProfileRecord>('machine-catalog/machine-profiles', { ids: id, pageSize: 1 })
+        const data = await fetchCrudList<ProfileRecord>('machine_catalog/machine-profiles', { ids: id, pageSize: 1 })
         const item = data?.items?.[0]
         if (!item) throw new Error('Machine profile not found.')
         const str = (k: string) => typeof item[k] === 'string' ? item[k] as string : null
@@ -121,9 +121,9 @@ export default function EditMachineProfilePage({ params }: { params?: { id?: str
             isLoading={loading}
             loadingMessage={t('machine_catalog.form.loading', 'Loading...')}
             successRedirect="/backend/machine-catalog"
-            onSubmit={async (vals) => { await updateCrud('machine-catalog/machine-profiles', vals) }}
+            onSubmit={async (vals) => { await updateCrud('machine_catalog/machine-profiles', vals) }}
             onDelete={async () => {
-              await deleteCrud('machine-catalog/machine-profiles', String(id))
+              await deleteCrud('machine_catalog/machine-profiles', String(id))
               pushWithFlash(router, '/backend/machine-catalog', 'Machine profile deleted.', 'success')
             }}
           />

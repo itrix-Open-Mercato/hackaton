@@ -25,7 +25,7 @@ export const metadata = {
   pageTitle: 'Machine Instances',
   pageTitleKey: 'machine_instances.page.title',
   pageGroup: 'Machines',
-  pageGroupKey: 'machine_instances.nav.group',
+  pageGroupKey: 'machines.nav.group',
   pageOrder: 40,
   icon,
   breadcrumb: [{ label: 'Machine Instances', labelKey: 'machine_instances.page.title' }],

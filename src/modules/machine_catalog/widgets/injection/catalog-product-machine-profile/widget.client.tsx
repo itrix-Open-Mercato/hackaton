@@ -87,7 +87,7 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
     try {
       const params = new URLSearchParams({ catalogProductId, pageSize: '1' })
       const profileCall = await apiCall<{ items?: Record<string, unknown>[] }>(
-        `/api/machine-catalog/machine-profiles?${params.toString()}`,
+        `/api/machine_catalog/machine-profiles?${params.toString()}`,
         undefined,
         { fallback: { items: [] } },
       )
@@ -98,7 +98,7 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
 
       const partsParams = new URLSearchParams({ machineProfileId: prof.id, pageSize: '50', sortField: 'sortOrder', sortDir: 'asc' })
       const partsCall = await apiCall<{ items?: Record<string, unknown>[] }>(
-        `/api/machine-catalog/part-templates?${partsParams.toString()}`,
+        `/api/machine_catalog/part-templates?${partsParams.toString()}`,
         undefined,
         { fallback: { items: [] } },
       )

@@ -1,5 +1,6 @@
 {
   "machine_catalog.page.title": "Machine Catalog",
+  "machines.nav.group": "Machines",
   "machine_catalog.nav.group": "Machines",
   "machine_catalog.create.title": "New Machine Profile",
   "machine_catalog.edit.title": "Edit Machine Profile",

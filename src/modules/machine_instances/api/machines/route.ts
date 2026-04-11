@@ -65,7 +65,13 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       }
       if (typeof query.search === 'string' && query.search.trim().length > 0) {
         const like = `%${escapeLikePattern(query.search.trim())}%`
-        filters['instance_code'] = { $ilike: like }
+        filters['$or'] = [
+          { instance_code: { $ilike: like } },
+          { serial_number: { $ilike: like } },
+          { site_name: { $ilike: like } },
+          { location_label: { $ilike: like } },
+          { contact_name: { $ilike: like } },
+        ]
       }
       if (query.customerCompanyId) filters['customer_company_id'] = query.customerCompanyId
       if (query.warrantyStatus) filters['warranty_status'] = query.warrantyStatus

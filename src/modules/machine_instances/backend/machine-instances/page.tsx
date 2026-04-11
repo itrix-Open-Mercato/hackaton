@@ -36,16 +36,26 @@ type MachinesResponse = {
   totalPages: number
 }
 
+function readString(item: Record<string, unknown>, camelKey: string, snakeKey: string): string | null {
+  const value = item[camelKey] ?? item[snakeKey]
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function readBoolean(item: Record<string, unknown>, camelKey: string, snakeKey: string): boolean {
+  const value = item[camelKey] ?? item[snakeKey]
+  return value === true
+}
+
 function mapApiMachine(item: Record<string, unknown>): MachineRow {
   return {
-    id: typeof item.id === 'string' ? item.id : '',
-    instanceCode: typeof item.instance_code === 'string' ? item.instance_code : '',
-    serialNumber: typeof item.serial_number === 'string' ? item.serial_number : null,
-    customerCompanyId: typeof item.customer_company_id === 'string' ? item.customer_company_id : null,
-    siteName: typeof item.site_name === 'string' ? item.site_name : null,
-    warrantyStatus: typeof item.warranty_status === 'string' ? item.warranty_status : null,
-    nextInspectionAt: typeof item.next_inspection_at === 'string' ? item.next_inspection_at : null,
-    isActive: item.is_active === true,
+    id: readString(item, 'id', 'id') ?? '',
+    instanceCode: readString(item, 'instanceCode', 'instance_code') ?? '',
+    serialNumber: readString(item, 'serialNumber', 'serial_number'),
+    customerCompanyId: readString(item, 'customerCompanyId', 'customer_company_id'),
+    siteName: readString(item, 'siteName', 'site_name'),
+    warrantyStatus: readString(item, 'warrantyStatus', 'warranty_status'),
+    nextInspectionAt: readString(item, 'nextInspectionAt', 'next_inspection_at'),
+    isActive: readBoolean(item, 'isActive', 'is_active'),
   }
 }
 
@@ -100,7 +110,7 @@ export default function MachineInstancesPage() {
         const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) })
         if (search) params.set('search', search)
         const fallback: MachinesResponse = { items: [], total: 0, page, totalPages: 1 }
-        const call = await apiCall<MachinesResponse>(`/api/machine-instances/machines?${params.toString()}`, undefined, { fallback })
+        const call = await apiCall<MachinesResponse>(`/api/machine_instances/machines?${params.toString()}`, undefined, { fallback })
         if (!call.ok) { flash('Failed to load machine instances.', 'error'); return }
         const payload = call.result ?? fallback
         if (!cancelled) {
@@ -122,7 +132,7 @@ export default function MachineInstancesPage() {
     const confirmed = await confirm({ title: `Delete machine "${row.instanceCode}"?`, variant: 'destructive' })
     if (!confirmed) return
     try {
-      await deleteCrud('machine-instances/machines', row.id)
+      await deleteCrud('machine_instances/machines', row.id)
       flash('Machine instance deleted.', 'success')
       setPage(1)
       router.refresh()

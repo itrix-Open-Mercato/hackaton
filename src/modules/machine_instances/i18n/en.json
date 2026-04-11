@@ -1,5 +1,6 @@
 {
   "machine_instances.page.title": "Machine Instances",
+  "machines.nav.group": "Machines",
   "machine_instances.nav.group": "Machines",
   "machine_instances.create.title": "New Machine Instance",
   "machine_instances.edit.title": "Edit Machine Instance",

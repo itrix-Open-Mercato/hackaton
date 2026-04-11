@@ -91,7 +91,7 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
             address: parsed.address ?? null,
             customerEntityId: parsed.customer_entity_id ?? null,
             contactPersonId: parsed.customer_entity_id ? parsed.contact_person_id ?? null : null,
-            machineAssetId: parsed.machine_asset_id ?? null,
+            machineInstanceId: parsed.machine_instance_id ?? null,
             orderId: parsed.order_id ?? null,
             createdByUserId: ctx.auth?.userId ?? null,
             tenantId: scope.tenantId,
@@ -186,7 +186,7 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
         } else if (companyChanged) {
           entity.contactPersonId = null
         }
-        if (parsed.machine_asset_id !== undefined) entity.machineAssetId = parsed.machine_asset_id
+        if (parsed.machine_instance_id !== undefined) entity.machineInstanceId = parsed.machine_instance_id
         if (parsed.order_id !== undefined) entity.orderId = parsed.order_id
       },
     })

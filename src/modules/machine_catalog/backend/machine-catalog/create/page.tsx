@@ -41,7 +41,7 @@ export default function CreateMachineProfilePage() {
           groups={groups}
           initialValues={{ isActive: true }}
           successRedirect="/backend/machine-catalog"
-          onSubmit={async (vals) => { await createCrud('machine-catalog/machine-profiles', vals) }}
+          onSubmit={async (vals) => { await createCrud('machine_catalog/machine-profiles', vals) }}
         />
       </PageBody>
     </Page>

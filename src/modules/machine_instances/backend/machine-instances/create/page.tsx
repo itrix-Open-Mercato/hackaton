@@ -55,7 +55,7 @@ export default function CreateMachineInstancePage() {
           groups={groups}
           initialValues={{ isActive: true, requiresAnnouncement: false }}
           successRedirect="/backend/machine-instances"
-          onSubmit={async (vals) => { await createCrud('machine-instances/machines', vals) }}
+          onSubmit={async (vals) => { await createCrud('machine_instances/machines', vals) }}
         />
       </PageBody>
     </Page>

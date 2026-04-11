@@ -14,7 +14,7 @@ export const metadata = {
   pageTitle: 'Machine Catalog',
   pageTitleKey: 'machine_catalog.page.title',
   pageGroup: 'Machines',
-  pageGroupKey: 'machine_catalog.nav.group',
+  pageGroupKey: 'machines.nav.group',
   pageOrder: 41,
   icon,
   breadcrumb: [{ label: 'Machine Catalog', labelKey: 'machine_catalog.page.title' }],

@@ -82,7 +82,7 @@ export default function EditMachineInstancePage({ params }: { params?: { id?: st
       setLoading(true)
       setErr(null)
       try {
-        const data = await fetchCrudList<MachineRecord>('machine-instances/machines', { ids: id, pageSize: 1 })
+        const data = await fetchCrudList<MachineRecord>('machine_instances/machines', { ids: id, pageSize: 1 })
         const item = data?.items?.[0]
         if (!item) throw new Error('Machine instance not found.')
         const str = (k: string) => typeof item[k] === 'string' ? item[k] as string : null
@@ -159,9 +159,9 @@ export default function EditMachineInstancePage({ params }: { params?: { id?: st
             isLoading={loading}
             loadingMessage={t('machine_instances.form.loading', 'Loading...')}
             successRedirect="/backend/machine-instances"
-            onSubmit={async (vals) => { await updateCrud('machine-instances/machines', vals) }}
+            onSubmit={async (vals) => { await updateCrud('machine_instances/machines', vals) }}
             onDelete={async () => {
-              await deleteCrud('machine-instances/machines', String(id))
+              await deleteCrud('machine_instances/machines', String(id))
               pushWithFlash(router, '/backend/machine-instances', 'Machine instance deleted.', 'success')
             }}
           />

@@ -3,6 +3,7 @@
 import type { CrudField, CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import type { ServiceTicketListItem } from '../types'
 import CustomerCascadeSelect from './CustomerCascadeSelect'
+import MachineCascadeSelect from './MachineCascadeSelect'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
@@ -23,7 +24,7 @@ export type TicketFormValues = {
   address: string
   customer_entity_id: string
   contact_person_id: string
-  machine_asset_id: string
+  machine_instance_id: string
   order_id: string
 }
 
@@ -72,12 +73,6 @@ export function buildTicketFields(
       placeholder: t('service_tickets.form.fields.address.placeholder'),
     },
     {
-      id: 'machine_asset_id',
-      label: t('service_tickets.form.fields.machineAssetId.label'),
-      type: 'text',
-      placeholder: t('service_tickets.form.fields.machineAssetId.placeholder'),
-    },
-    {
       id: 'order_id',
       label: t('service_tickets.form.fields.orderId.label'),
       type: 'text',
@@ -114,20 +109,47 @@ export function buildTicketGroups(
       title: t('service_tickets.form.groups.links'),
       column: 2,
       component: ({ values, setValue, errors }) => (
-        <CustomerCascadeSelect
-          companyId={String(values.customer_entity_id ?? '')}
-          personId={String(values.contact_person_id ?? '')}
-          companyLabel={t('service_tickets.form.fields.customerEntityId.label')}
-          personLabel={t('service_tickets.form.fields.contactPersonId.label')}
-          companyPlaceholder={t('service_tickets.form.fields.customerEntityId.placeholder')}
-          personPlaceholder={t('service_tickets.form.fields.contactPersonId.placeholder')}
-          companyError={errors.customer_entity_id}
-          personError={errors.contact_person_id}
-          setCompanyId={(value) => setValue('customer_entity_id', value)}
-          setPersonId={(value) => setValue('contact_person_id', value)}
-        />
+        <div className="space-y-4">
+          <MachineCascadeSelect
+            machineId={String(values.machine_instance_id ?? '')}
+            customerId={String(values.customer_entity_id ?? '')}
+            contactPersonId={String(values.contact_person_id ?? '')}
+            address={String(values.address ?? '')}
+            label={t('service_tickets.form.fields.machineInstanceId.label')}
+            placeholder={t('service_tickets.form.fields.machineInstanceId.placeholder')}
+            error={errors.machine_instance_id}
+            messages={{
+              loading: t('service_tickets.form.machineHints.loading'),
+              profileTitle: t('service_tickets.form.machineHints.profileTitle'),
+              emptyProfile: t('service_tickets.form.machineHints.emptyProfile'),
+              machineModelLabel: t('service_tickets.form.machineHints.machineModel'),
+              locationLabel: t('service_tickets.form.machineHints.location'),
+              serviceDurationLabel: t('service_tickets.form.machineHints.serviceDuration'),
+              maintenanceIntervalLabel: t('service_tickets.form.machineHints.maintenanceInterval'),
+              serviceNotesLabel: t('service_tickets.form.machineHints.serviceNotes'),
+              partsTitle: t('service_tickets.form.machineHints.partsTitle'),
+              emptyParts: t('service_tickets.form.machineHints.emptyParts'),
+            }}
+            setMachineId={(value) => setValue('machine_instance_id', value)}
+            setCustomerId={(value) => setValue('customer_entity_id', value)}
+            setContactPersonId={(value) => setValue('contact_person_id', value)}
+            setAddress={(value) => setValue('address', value)}
+          />
+          <CustomerCascadeSelect
+            companyId={String(values.customer_entity_id ?? '')}
+            personId={String(values.contact_person_id ?? '')}
+            companyLabel={t('service_tickets.form.fields.customerEntityId.label')}
+            personLabel={t('service_tickets.form.fields.contactPersonId.label')}
+            companyPlaceholder={t('service_tickets.form.fields.customerEntityId.placeholder')}
+            personPlaceholder={t('service_tickets.form.fields.contactPersonId.placeholder')}
+            companyError={errors.customer_entity_id}
+            personError={errors.contact_person_id}
+            setCompanyId={(value) => setValue('customer_entity_id', value)}
+            setPersonId={(value) => setValue('contact_person_id', value)}
+          />
+        </div>
       ),
-      fields: ['machine_asset_id', 'order_id'],
+      fields: ['order_id'],
     },
   ]
 }
@@ -144,7 +166,7 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     address: '',
     customer_entity_id: '',
     contact_person_id: '',
-    machine_asset_id: '',
+    machine_instance_id: '',
     order_id: '',
   }
 }
@@ -161,7 +183,7 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
     address: item.address ?? '',
     customer_entity_id: item.customerEntityId ?? '',
     contact_person_id: item.contactPersonId ?? '',
-    machine_asset_id: item.machineAssetId ?? '',
+    machine_instance_id: item.machineInstanceId ?? '',
     order_id: item.orderId ?? '',
   }
 }

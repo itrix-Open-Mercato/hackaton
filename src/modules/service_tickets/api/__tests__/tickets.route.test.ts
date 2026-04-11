@@ -11,7 +11,11 @@ const mockMakeCrudRoute = jest.fn((config: unknown) => ({
 
 jest.mock('@open-mercato/shared/lib/crud/factory', () => ({
   makeCrudRoute: (config: unknown) => mockMakeCrudRoute(config),
-}))
+}), { virtual: true })
+
+jest.mock('@open-mercato/shared/lib/db/escapeLikePattern', () => ({
+  escapeLikePattern: (value: string) => value.replaceAll('%', '\\%').replaceAll('_', '\\_'),
+}), { virtual: true })
 
 jest.mock('../../commands/tickets', () => ({
   ticketCrudEvents: {
@@ -81,7 +85,7 @@ describe('service tickets route', () => {
       service_type: 'maintenance,warranty_claim',
       priority: 'urgent,critical',
       customer_entity_id: 'customer-1',
-      machine_asset_id: 'machine-1',
+      machine_instance_id: 'machine-1',
       search: '50%_off',
       visit_date_from: '2026-04-10T09:00:00.000Z',
       visit_date_to: '2026-04-11T17:30:00.000Z',
@@ -93,7 +97,7 @@ describe('service tickets route', () => {
       service_type: { $in: ['maintenance', 'warranty_claim'] },
       priority: { $in: ['urgent', 'critical'] },
       customer_entity_id: 'customer-1',
-      machine_asset_id: 'machine-1',
+      machine_instance_id: 'machine-1',
       $or: [
         { ticket_number: { $ilike: '%50\\%\\_off%' } },
         { description: { $ilike: '%50\\%\\_off%' } },
@@ -121,7 +125,7 @@ describe('service tickets route', () => {
       address: 'Dock 7',
       customer_entity_id: 'customer-1',
       contact_person_id: 'person-1',
-      machine_asset_id: 'machine-1',
+      machine_instance_id: 'machine-1',
       order_id: 'order-1',
       created_by_user_id: 'user-1',
       tenant_id: 'tenant-1',
@@ -141,7 +145,7 @@ describe('service tickets route', () => {
       address: 'Dock 7',
       customerEntityId: 'customer-1',
       contactPersonId: 'person-1',
-      machineAssetId: 'machine-1',
+      machineInstanceId: 'machine-1',
       orderId: 'order-1',
       createdByUserId: 'user-1',
       tenantId: 'tenant-1',
@@ -161,7 +165,7 @@ describe('service tickets route', () => {
       address: null,
       customerEntityId: null,
       contactPersonId: null,
-      machineAssetId: null,
+      machineInstanceId: null,
       orderId: null,
       createdByUserId: null,
       tenantId: 'tenant-2',
@@ -181,7 +185,7 @@ describe('service tickets route', () => {
       address: null,
       customerEntityId: null,
       contactPersonId: null,
-      machineAssetId: null,
+      machineInstanceId: null,
       orderId: null,
       createdByUserId: null,
       tenantId: 'tenant-2',
