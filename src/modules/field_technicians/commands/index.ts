@@ -1,0 +1,2 @@
+import './technicians'
+import './certifications'
