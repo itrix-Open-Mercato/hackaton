@@ -1,10 +1,13 @@
 export type TechnicianListItem = {
   id: string
   staffMemberId: string
+  staffMemberName?: string | null
   isActive: boolean
   notes?: string | null
   skills: string[]
+  skillItems?: TechnicianSkillItem[]
   certificationCount: number
+  certifications?: TechnicianCertificationItem[]
   tenantId?: string
   organizationId?: string
   createdAt?: string | null

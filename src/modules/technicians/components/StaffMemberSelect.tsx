@@ -6,11 +6,7 @@ import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 
-type StaffMember = {
-  id: string
-  displayName: string
-  isActive: boolean
-}
+type StaffMemberRaw = Record<string, unknown> & { id: string }
 
 type StaffMemberSelectProps = {
   value: string
@@ -19,6 +15,10 @@ type StaffMemberSelectProps = {
   error?: string
   disabled?: boolean
   onChange: (value: string) => void
+}
+
+function getDisplayName(m: StaffMemberRaw): string {
+  return String(m.displayName ?? m.display_name ?? m.name ?? m.id)
 }
 
 export default function StaffMemberSelect({
@@ -31,9 +31,9 @@ export default function StaffMemberSelect({
 }: StaffMemberSelectProps) {
   const scopeVersion = useOrganizationScopeVersion()
 
-  const { data } = useQuery<{ items: StaffMember[] }>({
+  const { data } = useQuery<{ items: StaffMemberRaw[] }>({
     queryKey: ['staff-members-for-technician', scopeVersion],
-    queryFn: () => fetchCrudList<StaffMember>('staff/team-members', { pageSize: 100, is_active: 'true' }),
+    queryFn: () => fetchCrudList<StaffMemberRaw>('staff/team-members', { pageSize: 100 }),
   })
 
   const members = data?.items ?? []
@@ -50,7 +50,7 @@ export default function StaffMemberSelect({
         <option value="">{placeholder}</option>
         {members.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.displayName}
+            {getDisplayName(m)}
           </option>
         ))}
       </select>

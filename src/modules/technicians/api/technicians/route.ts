@@ -125,35 +125,68 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       const items: TechnicianListItem[] = Array.isArray(payload?.items) ? payload.items : []
       if (!items.length) return
       const em = ctx.container.resolve('em') as EntityManager
+      const knex = (em as any).getConnection().getKnex()
       const technicianIds = items.map((t: any) => String(t.id))
 
+      // Resolve staff member display names
+      const staffMemberIds = items.map((t: any) => String(t.staffMemberId)).filter(Boolean)
+      if (staffMemberIds.length > 0) {
+        const staffRows: Array<{ id: string; display_name: string }> = await knex('staff_team_members')
+          .select('id', 'display_name')
+          .whereIn('id', staffMemberIds)
+        const nameMap = new Map(staffRows.map((r) => [r.id, r.display_name]))
+        for (const item of items) {
+          ;(item as any).staffMemberName = nameMap.get(item.staffMemberId) || null
+        }
+      }
+
+      // Resolve skills
       const skills = await em.find(TechnicianSkill, {
         technician: { id: { $in: technicianIds } },
       } as FilterQuery<TechnicianSkill>)
 
+      const skillsByTech = new Map<string, string[]>()
+      const skillItemsByTech = new Map<string, Array<{ id: string; name: string }>>()
+      for (const s of skills) {
+        const techId = typeof s.technician === 'string' ? s.technician : s.technician?.id
+        if (!techId) continue
+        const nameArr = skillsByTech.get(techId) || []
+        nameArr.push(s.name)
+        skillsByTech.set(techId, nameArr)
+        const itemArr = skillItemsByTech.get(techId) || []
+        itemArr.push({ id: s.id, name: s.name })
+        skillItemsByTech.set(techId, itemArr)
+      }
+
+      // Resolve certifications
       const certs = await em.find(TechnicianCertification, {
         technician: { id: { $in: technicianIds } },
       } as FilterQuery<TechnicianCertification>)
 
-      const skillsByTech = new Map<string, string[]>()
-      for (const s of skills) {
-        const techId = typeof s.technician === 'string' ? s.technician : s.technician?.id
-        if (!techId) continue
-        const arr = skillsByTech.get(techId) || []
-        arr.push(s.name)
-        skillsByTech.set(techId, arr)
-      }
-
+      const certsByTech = new Map<string, Array<any>>()
       const certCountByTech = new Map<string, number>()
+      const now = new Date()
       for (const c of certs) {
         const techId = typeof c.technician === 'string' ? c.technician : c.technician?.id
         if (!techId) continue
         certCountByTech.set(techId, (certCountByTech.get(techId) || 0) + 1)
+        const arr = certsByTech.get(techId) || []
+        arr.push({
+          id: c.id,
+          name: c.name,
+          certificateNumber: c.certificateNumber ?? null,
+          issuedAt: c.issuedAt ? c.issuedAt.toISOString() : null,
+          expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
+          isExpired: c.expiresAt ? c.expiresAt < now : false,
+        })
+        certsByTech.set(techId, arr)
       }
 
       for (const item of items) {
         ;(item as any).skills = skillsByTech.get(item.id) || []
+        ;(item as any).skillItems = skillItemsByTech.get(item.id) || []
         ;(item as any).certificationCount = certCountByTech.get(item.id) || 0
+        ;(item as any).certifications = certsByTech.get(item.id) || []
       }
     },
   },

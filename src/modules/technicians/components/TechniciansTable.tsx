@@ -35,7 +35,15 @@ function buildColumns(t: (key: string) => string): ColumnDef<TechnicianListItem>
   const statusMap = buildStatusMap(t)
 
   return [
-    { accessorKey: 'staffMemberId', header: t('technicians.table.column.staffMemberId'), meta: { priority: 1 } },
+    {
+      accessorKey: 'staffMemberName',
+      header: t('technicians.table.column.staffMemberId'),
+      meta: { priority: 1 },
+      cell: ({ row }) => {
+        const name = row.original.staffMemberName
+        return name || <span className="text-muted-foreground">{row.original.staffMemberId.slice(0, 12)}...</span>
+      },
+    },
     {
       accessorKey: 'isActive',
       header: t('technicians.table.column.status'),
