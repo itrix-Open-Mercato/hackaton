@@ -15,6 +15,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { ServiceTicketListItem } from '../types'
+import { searchCompanies } from './customerOptions'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
@@ -67,6 +68,17 @@ function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListIt
 
   return [
     { accessorKey: 'ticketNumber', header: t('service_tickets.table.column.ticketNumber'), meta: { priority: 1 } },
+    {
+      id: 'companyName',
+      header: t('service_tickets.table.column.companyName'),
+      meta: { priority: 2 },
+      accessorFn: (row) => row._service_tickets?.companyName ?? null,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | null
+        if (!value) return <span className="text-muted-foreground">—</span>
+        return value
+      },
+    },
     {
       accessorKey: 'serviceType',
       header: t('service_tickets.table.column.serviceType'),
@@ -203,6 +215,18 @@ export default function ServiceTicketsTable() {
             type: 'select',
             multiple: true,
             options: PRIORITY_VALUES.map((value) => ({ value, label: t(PRIORITY_I18N_KEYS[value]) })),
+          },
+          {
+            id: 'customer_entity_id',
+            label: t('service_tickets.table.filters.company'),
+            type: 'combobox',
+            loadOptions: async (query?: string) => {
+              try {
+                return await searchCompanies(query ?? '')
+              } catch {
+                return []
+              }
+            },
           },
         ]}
         filterValues={values}

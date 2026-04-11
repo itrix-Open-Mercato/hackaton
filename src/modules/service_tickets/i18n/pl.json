@@ -19,6 +19,8 @@
   "service_tickets.table.filters.status": "Status",
   "service_tickets.table.filters.serviceType": "Typ usługi",
   "service_tickets.table.filters.priority": "Priorytet",
+  "service_tickets.table.filters.company": "Firma",
+  "service_tickets.table.column.companyName": "Firma",
   "service_tickets.table.search.placeholder": "Szukaj zleceń...",
   "service_tickets.form.create.title": "Utwórz zlecenie serwisowe",
   "service_tickets.form.create.submit": "Utwórz zlecenie",
@@ -62,5 +64,7 @@
   "service_tickets.enum.status.cancelled": "Anulowane",
   "service_tickets.enum.priority.normal": "Normalny",
   "service_tickets.enum.priority.urgent": "Pilny",
-  "service_tickets.enum.priority.critical": "Krytyczny"
+  "service_tickets.enum.priority.critical": "Krytyczny",
+  "service_tickets.validation.contactPersonNotInCompany": "Osoba kontaktowa nie należy do wybranej firmy",
+  "service_tickets.validation.contactPersonRequiresCompany": "Osoba kontaktowa wymaga wybrania firmy"
 }
