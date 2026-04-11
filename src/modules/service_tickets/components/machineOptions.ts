@@ -206,7 +206,7 @@ export async function searchMachines(query: string): Promise<MachineOption[]> {
 
 export async function fetchMachineById(id: string): Promise<MachineOption | null> {
   const payload = await readApiResultOrThrow<Record<string, unknown>>(
-    `/api/machine_instances/machines?id=${encodeURIComponent(id)}&pageSize=1`,
+    `/api/machine_instances/machines?ids=${encodeURIComponent(id)}&pageSize=1`,
   )
 
   return (

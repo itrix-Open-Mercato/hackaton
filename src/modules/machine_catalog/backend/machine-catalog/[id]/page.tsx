@@ -62,20 +62,26 @@ export default function EditMachineProfilePage({ params }: { params?: { id?: str
         const data = await fetchCrudList<ProfileRecord>('machine_catalog/machine-profiles', { ids: id, pageSize: 1 })
         const item = data?.items?.[0]
         if (!item) throw new Error('Machine profile not found.')
-        const str = (k: string) => typeof item[k] === 'string' ? item[k] as string : null
-        const num = (k: string) => typeof item[k] === 'number' ? item[k] as number : null
+        const str = (camel: string, snake: string) => {
+          const v = item[camel] ?? item[snake]
+          return typeof v === 'string' ? v as string : null
+        }
+        const num = (camel: string, snake: string) => {
+          const v = item[camel] ?? item[snake]
+          return typeof v === 'number' ? v as number : null
+        }
         const init: ProfileFormValues = {
           id: String(item.id),
-          catalogProductId: str('catalog_product_id'),
-          machineFamily: str('machine_family'),
-          modelCode: str('model_code'),
-          defaultTeamSize: num('default_team_size'),
-          defaultServiceDurationMinutes: num('default_service_duration_minutes'),
-          preventiveMaintenanceIntervalDays: num('preventive_maintenance_interval_days'),
-          defaultWarrantyMonths: num('default_warranty_months'),
-          startupNotes: str('startup_notes'),
-          serviceNotes: str('service_notes'),
-          isActive: item.is_active === true,
+          catalogProductId: str('catalogProductId', 'catalog_product_id'),
+          machineFamily: str('machineFamily', 'machine_family'),
+          modelCode: str('modelCode', 'model_code'),
+          defaultTeamSize: num('defaultTeamSize', 'default_team_size'),
+          defaultServiceDurationMinutes: num('defaultServiceDurationMinutes', 'default_service_duration_minutes'),
+          preventiveMaintenanceIntervalDays: num('preventiveMaintenanceIntervalDays', 'preventive_maintenance_interval_days'),
+          defaultWarrantyMonths: num('defaultWarrantyMonths', 'default_warranty_months'),
+          startupNotes: str('startupNotes', 'startup_notes'),
+          serviceNotes: str('serviceNotes', 'service_notes'),
+          isActive: (item.isActive ?? item.is_active) === true,
         }
         if (!cancelled) setInitial(init)
       } catch (error) {

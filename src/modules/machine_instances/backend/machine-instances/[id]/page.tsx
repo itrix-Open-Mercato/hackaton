@@ -85,27 +85,35 @@ export default function EditMachineInstancePage({ params }: { params?: { id?: st
         const data = await fetchCrudList<MachineRecord>('machine_instances/machines', { ids: id, pageSize: 1 })
         const item = data?.items?.[0]
         if (!item) throw new Error('Machine instance not found.')
-        const str = (k: string) => typeof item[k] === 'string' ? item[k] as string : null
+        const str = (camel: string, snake: string) => {
+          const v = item[camel] ?? item[snake]
+          return typeof v === 'string' ? v as string : null
+        }
+        const bool = (camel: string, snake: string) => (item[camel] ?? item[snake]) === true
+        const num = (camel: string, snake: string) => {
+          const v = item[camel] ?? item[snake]
+          return typeof v === 'number' ? v : null
+        }
         const init: MachineFormValues = {
           id: String(item.id),
-          instanceCode: str('instance_code') ?? '',
-          serialNumber: str('serial_number'),
-          catalogProductId: str('catalog_product_id'),
-          customerCompanyId: str('customer_company_id'),
-          siteName: str('site_name'),
-          locationLabel: str('location_label'),
-          contactName: str('contact_name'),
-          contactPhone: str('contact_phone'),
-          manufacturedAt: str('manufactured_at'),
-          commissionedAt: str('commissioned_at'),
-          warrantyUntil: str('warranty_until'),
-          warrantyStatus: str('warranty_status'),
-          lastInspectionAt: str('last_inspection_at'),
-          nextInspectionAt: str('next_inspection_at'),
-          requiresAnnouncement: item.requires_announcement === true,
-          announcementLeadTimeHours: typeof item.announcement_lead_time_hours === 'number' ? item.announcement_lead_time_hours : null,
-          instanceNotes: str('instance_notes'),
-          isActive: item.is_active === true,
+          instanceCode: str('instanceCode', 'instance_code') ?? '',
+          serialNumber: str('serialNumber', 'serial_number'),
+          catalogProductId: str('catalogProductId', 'catalog_product_id'),
+          customerCompanyId: str('customerCompanyId', 'customer_company_id'),
+          siteName: str('siteName', 'site_name'),
+          locationLabel: str('locationLabel', 'location_label'),
+          contactName: str('contactName', 'contact_name'),
+          contactPhone: str('contactPhone', 'contact_phone'),
+          manufacturedAt: str('manufacturedAt', 'manufactured_at'),
+          commissionedAt: str('commissionedAt', 'commissioned_at'),
+          warrantyUntil: str('warrantyUntil', 'warranty_until'),
+          warrantyStatus: str('warrantyStatus', 'warranty_status'),
+          lastInspectionAt: str('lastInspectionAt', 'last_inspection_at'),
+          nextInspectionAt: str('nextInspectionAt', 'next_inspection_at'),
+          requiresAnnouncement: bool('requiresAnnouncement', 'requires_announcement'),
+          announcementLeadTimeHours: num('announcementLeadTimeHours', 'announcement_lead_time_hours'),
+          instanceNotes: str('instanceNotes', 'instance_notes'),
+          isActive: bool('isActive', 'is_active'),
         }
         if (!cancelled) setInitial(init)
       } catch (error) {
