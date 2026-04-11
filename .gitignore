@@ -54,3 +54,5 @@ yarn-error.log*
 # Misc
 *.tgz
 .cache/
+data/cache.db
+tsconfig.tsbuildinfo

@@ -11,6 +11,15 @@ The framework lives in `node_modules/@open-mercato/*`. Never edit `node_modules`
 Install official packages with `yarn mercato module add @open-mercato/<package>`.
 To customise a built-in module beyond extensions, eject with `yarn mercato eject <module>`.
 
+## Local Environment Note
+
+This repo currently uses a hybrid Docker workflow for local development:
+- The app is usually run locally with `yarn dev` to avoid slow inner-loop iteration.
+- Supporting services commonly stay in Docker, especially PostgreSQL, Redis, and Meilisearch.
+- If Docker is also running the full app stack, `localhost:3000` may belong to the Docker app container rather than the local dev server.
+- In that setup, agents may use a separate local app port such as `3001` to avoid collisions.
+- If PostgreSQL is only exposed inside the Docker network, a host-side proxy on `localhost:5432` may be required for local app processes and test runners.
+
 ## Task → Context Map
 
 Match your task below, then **STOP and Read the listed file(s)** before writing
