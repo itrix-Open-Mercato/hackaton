@@ -1,12 +1,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { CatalogProduct } from '@open-mercato/core/modules/catalog/data/entities'
 import { CustomerCompanyProfile, CustomerEntity } from '@open-mercato/core/modules/customers/data/entities'
-import {
-  MachineCatalogProfile,
-  MachineCatalogServiceType,
-  MachineCatalogServiceTypeSkill,
-  MachineCatalogServiceTypeCertification,
-} from '../../modules/machine_catalog/data/entities'
+import { MachineCatalogProfile } from '../../modules/machine_catalog/data/entities'
 import { MachineInstance } from '../../modules/machine_instances/data/entities'
 
 export type MachineSeedScope = {
@@ -82,29 +77,8 @@ type MachineInstanceSeed = {
   instanceNotes?: string | null
 }
 
-function buildServiceTypes(
-  supportedTypes: string[],
-  opts: {
-    defaultTeamSize: number
-    defaultServiceDurationMinutes: number
-    requiredSkills: string[]
-    requiredCertifications: string[]
-    startupNotes?: string | null
-    serviceNotes?: string | null
-  },
-): ServiceTypeSeed[] {
-  return supportedTypes.map((serviceType) => ({
-    serviceType,
-    defaultTeamSize: opts.defaultTeamSize,
-    defaultServiceDurationMinutes: opts.defaultServiceDurationMinutes,
-    requiredSkills: opts.requiredSkills,
-    requiredCertifications: opts.requiredCertifications,
-    startupNotes: opts.startupNotes,
-    serviceNotes: opts.serviceNotes,
-  }))
-}
-
 const PRODUCT_SEEDS: ProductSeed[] = [
+  // ── CNC Milling Machine ─────────────────────────────────────────────────
   {
     code: 'PRD-CNC-6000',
     title: 'Frezarka CNC ProMill 6000',
@@ -132,18 +106,55 @@ const PRODUCT_SEEDS: ProductSeed[] = [
       preventiveMaintenanceIntervalDays: 180,
       defaultWarrantyMonths: 36,
     },
-    serviceTypes: buildServiceTypes(
-      ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
+    serviceTypes: [
       {
+        serviceType: 'Uruchomienie',
+        defaultTeamSize: 3,
+        defaultServiceDurationMinutes: 480,
+        requiredSkills: ['cnc', 'hydraulika', 'elektryka przemysłowa', 'mechanika precyzyjna'],
+        requiredCertifications: ['UDT – obsługa wciągników', 'SEP do 1 kV'],
+        startupNotes: 'Wymagany dźwig do rozładunku (4,8 t). Fundament musi być przygotowany wg DTR min. 7 dni wcześniej. Sprawdzić poziomowanie laserowe po posadowieniu.',
+        serviceNotes: 'Uruchomienie obejmuje: posadowienie, podłączenie zasilania 400V, napełnienie układu hydraulicznego, kalibrację 5 osi, test cięcia próbnego i szkolenie 2 operatorów.',
+      },
+      {
+        serviceType: 'Przegląd okresowy',
         defaultTeamSize: 2,
         defaultServiceDurationMinutes: 240,
         requiredSkills: ['cnc', 'hydraulika', 'mechanika precyzyjna'],
-        requiredCertifications: ['CE', 'ISO 9001'],
-        startupNotes: 'Dostęp do strefy produkcyjnej wymaga wcześniejszej awizacji i wejścia przez bramę B.',
-        serviceNotes: 'Przegląd pełny obejmuje zestaw A oraz kontrolę wrzeciona, pompy i enkodera.',
+        requiredCertifications: [],
+        startupNotes: 'Awizacja 48 h przed wizytą (ochrona, brama B). Maszyna musi być wyłączona i ostudzona min. 2 h.',
+        serviceNotes: 'Zakres: wymiana filtra oleju hydraulicznego, kontrola pasków napędowych wrzeciona, sprawdzenie luzów na prowadnicach, test geometrii, aktualizacja oprogramowania sterowania jeśli dostępna.',
       },
-    ),
+      {
+        serviceType: 'Przegląd roczny rozszerzony',
+        defaultTeamSize: 2,
+        defaultServiceDurationMinutes: 480,
+        requiredSkills: ['cnc', 'hydraulika', 'mechanika precyzyjna', 'elektryka przemysłowa'],
+        requiredCertifications: ['SEP do 1 kV'],
+        startupNotes: 'Przegląd wymaga zatrzymania maszyny na pełną zmianę. Zamówić części z zestawu B min. 14 dni wcześniej.',
+        serviceNotes: 'Rozszerzony o: wymianę łożysk wrzeciona, regenerację pompy hydraulicznej, wymianę kabla enkodera, przegląd szafy elektrycznej, pomiar rezystancji izolacji, kalibrację laserową pełną.',
+      },
+      {
+        serviceType: 'Naprawa awaryjna',
+        defaultTeamSize: 2,
+        defaultServiceDurationMinutes: 180,
+        requiredSkills: ['cnc', 'diagnostyka usterek', 'hydraulika', 'elektryka przemysłowa'],
+        requiredCertifications: ['SEP do 1 kV'],
+        startupNotes: 'Sprawdzić kod błędu na panelu sterowania przed przyjazdem. Zebrać logi z ostatnich 24 h ze sterownika.',
+        serviceNotes: 'Diagnostyka obejmuje: odczyt logów sterownika, kontrolę czujników, pomiary elektryczne silnika i enkodera, test hydrauliki pod ciśnieniem. Po naprawie obowiązkowy test cięcia próbnego.',
+      },
+      {
+        serviceType: 'Reklamacja gwarancyjna',
+        defaultTeamSize: 2,
+        defaultServiceDurationMinutes: 240,
+        requiredSkills: ['cnc', 'diagnostyka usterek', 'mechanika precyzyjna'],
+        requiredCertifications: [],
+        startupNotes: 'Wymagana dokumentacja fotograficzna usterki i kopia protokołu zgłoszenia. Nie demontować uszkodzonych części przed wizytą serwisową.',
+        serviceNotes: 'Procedura: oględziny, dokumentacja fotograficzna, demontaż wadliwego podzespołu, montaż zamiennika, test funkcjonalny, raport do producenta.',
+      },
+    ],
   },
+  // ── Heat Pump ───────────────────────────────────────────────────────────
   {
     code: 'PRD-HP-TM25',
     title: 'Pompa ciepła ThermoMax 25',
@@ -173,18 +184,55 @@ const PRODUCT_SEEDS: ProductSeed[] = [
       preventiveMaintenanceIntervalDays: 365,
       defaultWarrantyMonths: 36,
     },
-    serviceTypes: buildServiceTypes(
-      ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
+    serviceTypes: [
       {
+        serviceType: 'Uruchomienie',
+        defaultTeamSize: 2,
+        defaultServiceDurationMinutes: 360,
+        requiredSkills: ['hvac', 'hydraulika instalacyjna', 'chłodnictwo', 'elektryka'],
+        requiredCertifications: ['F-GAZ kat. I', 'SEP do 1 kV'],
+        startupNotes: 'Instalacja hydrauliczna musi być wykonana i napełniona przed wizytą. Sprawdzić przepływomierzem wydatek obiegu glikolowego. Dostęp na dach wymaga klucza u ochrony.',
+        serviceNotes: 'Uruchomienie: kontrola szczelności układu chłodniczego (próba ciśnieniowa N₂), napełnienie czynnikiem R-32, wpis do karty F-GAZ, ustawienie krzywej grzewczej, test trybu grzania i chłodzenia, szkolenie administratora budynku.',
+      },
+      {
+        serviceType: 'Przegląd roczny',
         defaultTeamSize: 1,
         defaultServiceDurationMinutes: 180,
         requiredSkills: ['hvac', 'diagnostyka chłodnicza'],
         requiredCertifications: ['F-GAZ kat. I'],
-        startupNotes: 'Przy pierwszym uruchomieniu wymagane potwierdzenie obiegu hydraulicznego i wpis do karty F-GAZ.',
-        serviceNotes: 'Roczny przegląd obejmuje kontrolę F-GAZ, skraplacza i układu hydraulicznego.',
+        startupNotes: 'Zabrać manometry i detektor nieszczelności. Przegląd wykonywać przy temperaturze zewnętrznej powyżej 5°C.',
+        serviceNotes: 'Zakres: kontrola szczelności F-GAZ z wpisem do karty, czyszczenie skraplacza, kontrola filtrów powietrza i wody, sprawdzenie ciśnienia w obiegu glikolowym, test zabezpieczeń, odczyt parametrów pracy ze sterownika.',
       },
-    ),
+      {
+        serviceType: 'Przegląd 2-letni rozszerzony',
+        defaultTeamSize: 2,
+        defaultServiceDurationMinutes: 300,
+        requiredSkills: ['hvac', 'diagnostyka chłodnicza', 'elektryka'],
+        requiredCertifications: ['F-GAZ kat. I', 'SEP do 1 kV'],
+        startupNotes: 'Wymaga krótkotrwałego wyłączenia ogrzewania budynku (max 4 h). Uzgodnić termin z administratorem.',
+        serviceNotes: 'Rozszerzony o: wymianę zaworu rozprężnego, kontrolę kondensatora rozruchowego sprężarki, wymianę filtra-osuszacza, pomiar rezystancji izolacji silnika sprężarki, aktualizację firmware sterownika.',
+      },
+      {
+        serviceType: 'Naprawa awaryjna',
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 120,
+        requiredSkills: ['hvac', 'diagnostyka chłodnicza', 'elektryka'],
+        requiredCertifications: ['F-GAZ kat. I'],
+        startupNotes: 'Sprawdzić kod błędu na sterowniku (zdalnie przez BMS jeśli podłączony). Zabrać detektor nieszczelności i zapas czynnika R-32.',
+        serviceNotes: 'Diagnostyka: odczyt logów sterownika, kontrola ciśnień, test czujników temperatury, sprawdzenie zaworów, kontrola zabezpieczeń elektrycznych. Po naprawie: test pełnego cyklu grzanie/chłodzenie.',
+      },
+      {
+        serviceType: 'Reklamacja gwarancyjna',
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 180,
+        requiredSkills: ['hvac', 'diagnostyka chłodnicza'],
+        requiredCertifications: ['F-GAZ kat. I'],
+        startupNotes: 'Wymagany aktualny wpis w karcie F-GAZ. Sprawdzić czy przeglądy były wykonywane terminowo (warunek gwarancji).',
+        serviceNotes: 'Procedura: weryfikacja historii serwisowej, oględziny, dokumentacja, wymiana podzespołu, test, raport gwarancyjny do ThermoTech GmbH.',
+      },
+    ],
   },
+  // ── Industrial Label Printer ────────────────────────────────────────────
   {
     code: 'PRD-PRT-LP800',
     title: 'LabelPro 800 Industrial',
@@ -214,17 +262,53 @@ const PRODUCT_SEEDS: ProductSeed[] = [
       preventiveMaintenanceIntervalDays: 180,
       defaultWarrantyMonths: 36,
     },
-    serviceTypes: buildServiceTypes(
-      ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
+    serviceTypes: [
       {
+        serviceType: 'Uruchomienie',
         defaultTeamSize: 1,
-        defaultServiceDurationMinutes: 90,
+        defaultServiceDurationMinutes: 120,
+        requiredSkills: ['druk termotransferowy', 'integracja linii pakowania'],
+        requiredCertifications: [],
+        startupNotes: 'Drukarka musi być zamontowana na linii pakowania i podłączona do zasilania przed wizytą. Przygotować próbki etykiet i taśmy TTR docelowego formatu.',
+        serviceNotes: 'Uruchomienie: instalacja oprogramowania sterującego, konfiguracja formatu etykiety, kalibracja czujnika etykiet i taśmy, test wydruku 100 szt., integracja z systemem ERP/WMS klienta jeśli wymagana, szkolenie operatora.',
+      },
+      {
+        serviceType: 'Przegląd półroczny',
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 60,
         requiredSkills: ['druk termotransferowy', 'utrzymanie ruchu'],
         requiredCertifications: [],
-        startupNotes: 'Po wymianie głowicy należy wykonać kalibrację i potwierdzić przebieg wydruku.',
-        serviceNotes: 'Przeglądy cykliczne obejmują czyszczenie mechanizmu i kontrolę przebiegu wydruku.',
+        startupNotes: 'Okno serwisowe 6:00–8:00 (przed uruchomieniem linii). Zabrać zestaw czyszczący i wałek dociskowy na wymianę.',
+        serviceNotes: 'Zakres: czyszczenie głowicy drukującej IPA 70%, wymiana wałka dociskowego, kontrola prowadnic taśmy i etykiet, czyszczenie czujników, test jakości wydruku (skan kodu kreskowego), aktualizacja firmware jeśli dostępna.',
       },
-    ),
+      {
+        serviceType: 'Wymiana głowicy drukującej',
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 90,
+        requiredSkills: ['druk termotransferowy', 'kalibracja głowicy'],
+        requiredCertifications: [],
+        startupNotes: 'Wyłączyć drukarkę i odczekać 15 min do ostygnięcia głowicy. Przygotować nową głowicę 300 DPI (kod PRD-GLW-300D).',
+        serviceNotes: 'Wymiana: demontaż starej głowicy, montaż nowej, kalibracja ciśnienia docisku, ustawienie balansu temperatury, test wydruku na 3 różnych materiałach etykiet, weryfikacja skanem kodów.',
+      },
+      {
+        serviceType: 'Naprawa awaryjna',
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 60,
+        requiredSkills: ['druk termotransferowy', 'diagnostyka usterek'],
+        requiredCertifications: [],
+        startupNotes: 'Spisać kod błędu z wyświetlacza. Sprawdzić czy problem dotyczy mechanizmu, głowicy czy elektroniki (diody statusu na płycie głównej).',
+        serviceNotes: 'Diagnostyka: odczyt logów, kontrola mechanizmu podawania, test czujników, sprawdzenie płyty sterującej. Najczęstsze usterki: zużyty wałek dociskowy, uszkodzony czujnik taśmy, przepalona głowica.',
+      },
+      {
+        serviceType: 'Reklamacja gwarancyjna',
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 90,
+        requiredSkills: ['druk termotransferowy'],
+        requiredCertifications: [],
+        startupNotes: 'Sprawdzić czy używano oryginalnych materiałów eksploatacyjnych (warunek gwarancji). Zabrać formularz reklamacyjny PrintCorp.',
+        serviceNotes: 'Procedura: weryfikacja warunków eksploatacji, dokumentacja fotograficzna, wymiana wadliwego podzespołu, test, wypełnienie formularza gwarancyjnego PrintCorp S.A.',
+      },
+    ],
   },
 ]
 
@@ -461,69 +545,87 @@ async function ensureServiceType(
   seed: ServiceTypeSeed,
   sortOrder: number,
 ): Promise<void> {
-  let record = await em.findOne(MachineCatalogServiceType, {
-    tenantId: scope.tenantId,
-    organizationId: scope.organizationId,
-    machineProfileId,
-    serviceType: seed.serviceType,
-    deletedAt: null,
-  })
+  // Use raw Knex — Node 24 tsx bug makes @app entity metadata invisible to CLI
+  const knex = (em as any).getConnection().getKnex()
+  const now = new Date()
 
-  if (!record) {
-    const now = new Date()
-    record = em.create(MachineCatalogServiceType, {
-      tenantId: scope.tenantId,
-      organizationId: scope.organizationId,
-      machineProfileId,
-      serviceType: seed.serviceType,
-      sortOrder,
-      createdAt: now,
-      updatedAt: now,
+  // Upsert service type
+  const [existing] = await knex('machine_catalog_service_types')
+    .where({
+      tenant_id: scope.tenantId,
+      organization_id: scope.organizationId,
+      machine_profile_id: machineProfileId,
+      service_type: seed.serviceType,
     })
+    .whereNull('deleted_at')
+    .select('id')
+    .limit(1)
+
+  let serviceTypeId: string
+  if (existing) {
+    serviceTypeId = existing.id
+    await knex('machine_catalog_service_types')
+      .where({ id: serviceTypeId })
+      .update({
+        default_team_size: seed.defaultTeamSize,
+        default_service_duration_minutes: seed.defaultServiceDurationMinutes,
+        startup_notes: seed.startupNotes ?? null,
+        service_notes: seed.serviceNotes ?? null,
+        sort_order: sortOrder,
+        updated_at: now,
+      })
+  } else {
+    const [inserted] = await knex('machine_catalog_service_types')
+      .insert({
+        tenant_id: scope.tenantId,
+        organization_id: scope.organizationId,
+        machine_profile_id: machineProfileId,
+        service_type: seed.serviceType,
+        default_team_size: seed.defaultTeamSize,
+        default_service_duration_minutes: seed.defaultServiceDurationMinutes,
+        startup_notes: seed.startupNotes ?? null,
+        service_notes: seed.serviceNotes ?? null,
+        sort_order: sortOrder,
+        created_at: now,
+        updated_at: now,
+      })
+      .returning('id')
+    serviceTypeId = inserted.id
   }
-
-  record.defaultTeamSize = seed.defaultTeamSize
-  record.defaultServiceDurationMinutes = seed.defaultServiceDurationMinutes
-  record.startupNotes = seed.startupNotes ?? null
-  record.serviceNotes = seed.serviceNotes ?? null
-  record.sortOrder = sortOrder
-
-  em.persist(record)
-  await em.flush()
 
   // Skills
   for (const skillName of seed.requiredSkills) {
-    const existing = await em.findOne(MachineCatalogServiceTypeSkill, {
-      machineServiceTypeId: record.id,
-      skillName,
-    })
-    if (!existing) {
-      em.persist(em.create(MachineCatalogServiceTypeSkill, {
-        tenantId: scope.tenantId,
-        organizationId: scope.organizationId,
-        machineServiceTypeId: record.id,
-        skillName,
-      }))
+    const [existingSkill] = await knex('machine_catalog_service_type_skills')
+      .where({ machine_service_type_id: serviceTypeId, skill_name: skillName })
+      .select('id')
+      .limit(1)
+    if (!existingSkill) {
+      await knex('machine_catalog_service_type_skills').insert({
+        tenant_id: scope.tenantId,
+        organization_id: scope.organizationId,
+        machine_service_type_id: serviceTypeId,
+        skill_name: skillName,
+        created_at: now,
+      })
     }
   }
 
   // Certifications
   for (const certName of seed.requiredCertifications) {
-    const existing = await em.findOne(MachineCatalogServiceTypeCertification, {
-      machineServiceTypeId: record.id,
-      certificationName: certName,
-    })
-    if (!existing) {
-      em.persist(em.create(MachineCatalogServiceTypeCertification, {
-        tenantId: scope.tenantId,
-        organizationId: scope.organizationId,
-        machineServiceTypeId: record.id,
-        certificationName: certName,
-      }))
+    const [existingCert] = await knex('machine_catalog_service_type_certifications')
+      .where({ machine_service_type_id: serviceTypeId, certification_name: certName })
+      .select('id')
+      .limit(1)
+    if (!existingCert) {
+      await knex('machine_catalog_service_type_certifications').insert({
+        tenant_id: scope.tenantId,
+        organization_id: scope.organizationId,
+        machine_service_type_id: serviceTypeId,
+        certification_name: certName,
+        created_at: now,
+      })
     }
   }
-
-  await em.flush()
 }
 
 async function ensureCompany(
