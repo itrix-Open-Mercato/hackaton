@@ -19,6 +19,8 @@
   "service_tickets.table.filters.status": "Status",
   "service_tickets.table.filters.serviceType": "Typ usługi",
   "service_tickets.table.filters.priority": "Priorytet",
+  "service_tickets.table.filters.visitDate": "Data wizyty",
+  "service_tickets.table.filters.createdAt": "Data utworzenia",
   "service_tickets.table.filters.company": "Firma",
   "service_tickets.table.column.companyName": "Firma",
   "service_tickets.table.search.placeholder": "Szukaj zleceń...",

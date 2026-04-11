@@ -27,6 +27,8 @@ const querySchema = z
     search: z.string().optional(),
     visit_date_from: z.string().optional(),
     visit_date_to: z.string().optional(),
+    created_at_from: z.string().optional(),
+    created_at_to: z.string().optional(),
     page: z.coerce.number().min(1).default(1),
     pageSize: z.coerce.number().min(1).max(100).default(50),
     sortField: z.string().optional().default('created_at'),
@@ -38,6 +40,17 @@ const rawBodySchema = z.object({}).passthrough()
 
 type Query = z.infer<typeof querySchema>
 type BaseFields = Record<string, unknown>
+
+function parseDateFilterBoundary(value: string, boundary: 'start' | 'end'): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number)
+    return boundary === 'start'
+      ? new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+      : new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+  }
+
+  return new Date(value)
+}
 
 export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
   metadata: {
@@ -112,9 +125,16 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
 
       if (q.visit_date_from || q.visit_date_to) {
         const range: { $gte?: Date; $lte?: Date } = {}
-        if (q.visit_date_from) range.$gte = new Date(q.visit_date_from)
-        if (q.visit_date_to) range.$lte = new Date(q.visit_date_to)
+        if (q.visit_date_from) range.$gte = parseDateFilterBoundary(q.visit_date_from, 'start')
+        if (q.visit_date_to) range.$lte = parseDateFilterBoundary(q.visit_date_to, 'end')
         F.visit_date = range
+      }
+
+      if (q.created_at_from || q.created_at_to) {
+        const range: { $gte?: Date; $lte?: Date } = {}
+        if (q.created_at_from) range.$gte = parseDateFilterBoundary(q.created_at_from, 'start')
+        if (q.created_at_to) range.$lte = parseDateFilterBoundary(q.created_at_to, 'end')
+        F.created_at = range
       }
 
       return filters

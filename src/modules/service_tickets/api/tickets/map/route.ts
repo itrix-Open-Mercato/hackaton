@@ -25,7 +25,20 @@ const filterSchema = z.object({
   search: z.string().optional(),
   visit_date_from: z.string().optional(),
   visit_date_to: z.string().optional(),
+  created_at_from: z.string().optional(),
+  created_at_to: z.string().optional(),
 })
+
+function parseDateFilterBoundary(value: string, boundary: 'start' | 'end'): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number)
+    return boundary === 'start'
+      ? new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+      : new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+  }
+
+  return new Date(value)
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await getAuthFromRequest(request)
@@ -86,12 +99,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   if (q.visit_date_from) {
     conditions.push('st.visit_date >= :visitDateFrom')
-    bindings.visitDateFrom = new Date(q.visit_date_from)
+    bindings.visitDateFrom = parseDateFilterBoundary(q.visit_date_from, 'start')
   }
 
   if (q.visit_date_to) {
     conditions.push('st.visit_date <= :visitDateTo')
-    bindings.visitDateTo = new Date(q.visit_date_to)
+    bindings.visitDateTo = parseDateFilterBoundary(q.visit_date_to, 'end')
+  }
+
+  if (q.created_at_from) {
+    conditions.push('st.created_at >= :createdAtFrom')
+    bindings.createdAtFrom = parseDateFilterBoundary(q.created_at_from, 'start')
+  }
+
+  if (q.created_at_to) {
+    conditions.push('st.created_at <= :createdAtTo')
+    bindings.createdAtTo = parseDateFilterBoundary(q.created_at_to, 'end')
   }
 
   const whereClause = conditions.join(' AND ')

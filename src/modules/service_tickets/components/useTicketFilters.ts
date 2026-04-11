@@ -20,6 +20,28 @@ export interface TicketFilters {
   filterParams: string
 }
 
+function appendFilterParam(params: URLSearchParams, key: string, value: unknown) {
+  if (value == null || value === '') return
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return
+    params.set(key, value.map(String).join(','))
+    return
+  }
+
+  if (typeof value === 'object') {
+    const range = value as { from?: unknown; to?: unknown }
+    const from = typeof range.from === 'string' ? range.from : ''
+    const to = typeof range.to === 'string' ? range.to : ''
+
+    if (from) params.set(`${key}_from`, from)
+    if (to) params.set(`${key}_to`, to)
+    return
+  }
+
+  params.set(key, String(value))
+}
+
 export function useTicketFilters(): TicketFilters {
   const [search, setSearch] = React.useState('')
   const [values, setValues] = React.useState<FilterValues>({})
@@ -30,12 +52,7 @@ export function useTicketFilters(): TicketFilters {
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     Object.entries(values).forEach(([key, value]) => {
-      if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return
-      if (Array.isArray(value)) {
-        params.set(key, value.map(String).join(','))
-      } else {
-        params.set(key, String(value))
-      }
+      appendFilterParam(params, key, value)
     })
     return params.toString()
   }, [search, values])

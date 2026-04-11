@@ -76,7 +76,7 @@ describe('service tickets route', () => {
     expect(openApi).toBeDefined()
   })
 
-  it('builds ticket filters for enum filters, escaped search, and visit date ranges', async () => {
+  it('builds ticket filters for enum filters, escaped search, and datetime ranges', async () => {
     const config = getRouteConfig()
 
     const filters = await config.list.buildFilters({
@@ -89,6 +89,8 @@ describe('service tickets route', () => {
       search: '50%_off',
       visit_date_from: '2026-04-10T09:00:00.000Z',
       visit_date_to: '2026-04-11T17:30:00.000Z',
+      created_at_from: '2026-04-01T08:15:00.000Z',
+      created_at_to: '2026-04-30T18:45:00.000Z',
     })
 
     expect(filters).toMatchObject({
@@ -107,6 +109,32 @@ describe('service tickets route', () => {
     expect(filters.visit_date).toEqual({
       $gte: new Date('2026-04-10T09:00:00.000Z'),
       $lte: new Date('2026-04-11T17:30:00.000Z'),
+    })
+
+    expect(filters.created_at).toEqual({
+      $gte: new Date('2026-04-01T08:15:00.000Z'),
+      $lte: new Date('2026-04-30T18:45:00.000Z'),
+    })
+  })
+
+  it('treats date-only ranges as full inclusive calendar days', async () => {
+    const config = getRouteConfig()
+
+    const filters = await config.list.buildFilters({
+      visit_date_from: '2026-04-10',
+      visit_date_to: '2026-04-11',
+      created_at_from: '2026-04-01',
+      created_at_to: '2026-04-30',
+    })
+
+    expect(filters.visit_date).toEqual({
+      $gte: new Date('2026-04-10T00:00:00.000Z'),
+      $lte: new Date('2026-04-11T23:59:59.999Z'),
+    })
+
+    expect(filters.created_at).toEqual({
+      $gte: new Date('2026-04-01T00:00:00.000Z'),
+      $lte: new Date('2026-04-30T23:59:59.999Z'),
     })
   })
 
