@@ -63,6 +63,26 @@ export const fieldTechnicianCertificationUpdateSchema = z.object({
   notes: z.string().nullable().optional(),
 })
 
+export const availabilityDayTypeSchema = z.enum(['work_day', 'trip', 'unavailable', 'holiday'])
+
+export const fieldTechnicianAvailabilityCreateSchema = z.object({
+  tenantId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  technicianId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dayType: availabilityDayTypeSchema.default('work_day'),
+  notes: z.string().nullable().optional(),
+})
+
+export const fieldTechnicianAvailabilityUpdateSchema = z.object({
+  id: z.string().uuid(),
+  dayType: availabilityDayTypeSchema.optional(),
+  notes: z.string().nullable().optional(),
+})
+
+export type FieldTechnicianAvailabilityCreateInput = z.infer<typeof fieldTechnicianAvailabilityCreateSchema>
+export type FieldTechnicianAvailabilityUpdateInput = z.infer<typeof fieldTechnicianAvailabilityUpdateSchema>
+
 export type FieldTechnicianCreateInput = z.infer<typeof fieldTechnicianCreateSchema>
 export type FieldTechnicianUpdateInput = z.infer<typeof fieldTechnicianUpdateSchema>
 export type FieldTechnicianCertificationCreateInput = z.infer<typeof fieldTechnicianCertificationCreateSchema>

@@ -12,7 +12,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { pushWithFlash } from '@open-mercato/ui/backend/utils/flash'
-import { AlertTriangle, Plus, Trash2, ExternalLink, Wrench, MapPin, Languages } from 'lucide-react'
+import { AlertTriangle, Plus, Trash2, ExternalLink, Wrench, MapPin, Languages, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 
 type TechnicianRecord = {
   id: string
@@ -31,6 +31,32 @@ type TechnicianRecord = {
   current_order_id: string | null
   is_active: boolean
 }
+
+type AvailabilityDayType = 'work_day' | 'trip' | 'unavailable' | 'holiday'
+
+type AvailabilityRecord = {
+  id: string
+  technician_id: string
+  date: string
+  day_type: AvailabilityDayType
+  notes: string | null
+}
+
+const DAY_TYPE_COLORS: Record<AvailabilityDayType, string> = {
+  work_day: 'bg-green-500 text-white',
+  trip: 'bg-blue-500 text-white',
+  unavailable: 'bg-gray-400 text-white',
+  holiday: 'bg-amber-400 text-white',
+}
+
+const DAY_TYPE_LABELS_KEY: Record<AvailabilityDayType, string> = {
+  work_day: 'fieldTechnicians.availability.dayType.work_day',
+  trip: 'fieldTechnicians.availability.dayType.trip',
+  unavailable: 'fieldTechnicians.availability.dayType.unavailable',
+  holiday: 'fieldTechnicians.availability.dayType.holiday',
+}
+
+const DAY_TYPE_CYCLE: Array<AvailabilityDayType | null> = ['work_day', 'trip', 'unavailable', 'holiday', null]
 
 type CertificationRecord = {
   id: string
@@ -89,8 +115,11 @@ export default function FieldTechnicianDetailPage({ params }: { params?: { id?: 
   const router = useRouter()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
-  const [activeTab, setActiveTab] = React.useState<'overview' | 'certifications' | 'edit'>('overview')
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'certifications' | 'availability' | 'edit'>('overview')
   const [showAddCert, setShowAddCert] = React.useState(false)
+  const [calendarYear, setCalendarYear] = React.useState(() => new Date().getFullYear())
+  const [calendarMonth, setCalendarMonth] = React.useState(() => new Date().getMonth())
+  const [savingDate, setSavingDate] = React.useState<string | null>(null)
 
   const { data: technicianData } = useQuery({
     queryKey: ['field-technician', technicianId],
@@ -115,6 +144,35 @@ export default function FieldTechnicianDetailPage({ params }: { params?: { id?: 
     },
     enabled: !!technicianId && activeTab === 'certifications',
   })
+
+  const availabilityDateFrom = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-01`
+  const lastDay = new Date(calendarYear, calendarMonth + 1, 0).getDate()
+  const availabilityDateTo = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+  const { data: availabilityData, refetch: refetchAvailability } = useQuery({
+    queryKey: ['field-technician-availability', technicianId, calendarYear, calendarMonth],
+    queryFn: async () => {
+      if (!technicianId) return { items: [] }
+      return fetchCrudList<AvailabilityRecord>('field-technicians/availability', {
+        technicianId,
+        dateFrom: availabilityDateFrom,
+        dateTo: availabilityDateTo,
+        pageSize: 100,
+        sortField: 'date',
+        sortDir: 'asc',
+      })
+    },
+    enabled: !!technicianId && activeTab === 'availability',
+  })
+
+  const availabilityByDate = React.useMemo(() => {
+    const map: Record<string, AvailabilityRecord> = {}
+    for (const rec of (availabilityData?.items ?? [])) {
+      const dateKey = String(rec.date).slice(0, 10)
+      map[dateKey] = { ...rec, date: dateKey }
+    }
+    return map
+  }, [availabilityData])
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteCrud('field-technicians', id),
@@ -277,6 +335,7 @@ export default function FieldTechnicianDetailPage({ params }: { params?: { id?: 
   const tabs = [
     { id: 'overview' as const, label: t('fieldTechnicians.detail.tabs.overview', 'Overview') },
     { id: 'certifications' as const, label: t('fieldTechnicians.detail.tabs.certifications', 'Certifications & Permissions') },
+    { id: 'availability' as const, label: t('fieldTechnicians.detail.tabs.availability', 'Availability') },
     { id: 'edit' as const, label: t('fieldTechnicians.detail.tabs.edit', 'Edit profile') },
   ]
 
@@ -649,6 +708,142 @@ export default function FieldTechnicianDetailPage({ params }: { params?: { id?: 
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Availability tab */}
+          {activeTab === 'availability' && (
+            <div className="space-y-4">
+              {/* Month navigation */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  {t('fieldTechnicians.availability.heading', 'Availability Calendar')}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1) }
+                      else setCalendarMonth(m => m - 1)
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[140px] text-center text-sm font-medium">
+                    {new Date(calendarYear, calendarMonth).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1) }
+                      else setCalendarMonth(m => m + 1)
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3 text-xs">
+                {(Object.entries(DAY_TYPE_COLORS) as [AvailabilityDayType, string][]).map(([type, cls]) => (
+                  <span key={type} className="flex items-center gap-1.5">
+                    <span className={`inline-block h-3 w-3 rounded-sm ${cls}`} />
+                    {t(DAY_TYPE_LABELS_KEY[type], type)}
+                  </span>
+                ))}
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-3 w-3 rounded-sm border bg-background" />
+                  {t('fieldTechnicians.availability.dayType.none', 'No marking')}
+                </span>
+              </div>
+
+              {/* Calendar grid */}
+              <div className="rounded-lg border bg-card p-4">
+                {/* Weekday headers */}
+                <div className="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
+                  {[
+                    t('fieldTechnicians.availability.weekday.mon', 'Mon'),
+                    t('fieldTechnicians.availability.weekday.tue', 'Tue'),
+                    t('fieldTechnicians.availability.weekday.wed', 'Wed'),
+                    t('fieldTechnicians.availability.weekday.thu', 'Thu'),
+                    t('fieldTechnicians.availability.weekday.fri', 'Fri'),
+                    t('fieldTechnicians.availability.weekday.sat', 'Sat'),
+                    t('fieldTechnicians.availability.weekday.sun', 'Sun'),
+                  ].map((d) => (
+                    <div key={d} className="py-1">{d}</div>
+                  ))}
+                </div>
+
+                {/* Day cells */}
+                {(() => {
+                  const firstOfMonth = new Date(calendarYear, calendarMonth, 1)
+                  // JS getDay(): 0=Sun, 1=Mon … 6=Sat — convert to Mon-first offset
+                  const startOffset = (firstOfMonth.getDay() + 6) % 7
+                  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate()
+                  const cells: React.ReactNode[] = []
+
+                  for (let i = 0; i < startOffset; i++) {
+                    cells.push(<div key={`empty-${i}`} />)
+                  }
+
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                    const record = availabilityByDate[dateStr]
+                    const dayType = record?.day_type ?? null
+                    const colorCls = dayType ? DAY_TYPE_COLORS[dayType] : 'bg-muted/30 hover:bg-muted/60 text-foreground'
+                    const isSaving = savingDate === dateStr
+                    const today = new Date()
+                    const isToday = today.getFullYear() === calendarYear && today.getMonth() === calendarMonth && today.getDate() === day
+
+                    cells.push(
+                      <button
+                        key={dateStr}
+                        type="button"
+                        disabled={isSaving}
+                        title={dayType ? t(DAY_TYPE_LABELS_KEY[dayType], dayType) : t('fieldTechnicians.availability.dayType.none', 'No marking')}
+                        className={`relative flex aspect-square items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 ${colorCls} ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                        onClick={async () => {
+                          setSavingDate(dateStr)
+                          try {
+                            const currentIndex = DAY_TYPE_CYCLE.indexOf(dayType)
+                            const nextType = DAY_TYPE_CYCLE[(currentIndex + 1) % DAY_TYPE_CYCLE.length]
+                            if (nextType === null) {
+                              if (record) {
+                                await deleteCrud('field-technicians/availability', record.id)
+                              }
+                            } else if (record) {
+                              await updateCrud('field-technicians/availability', { id: record.id, dayType: nextType })
+                            } else {
+                              await createCrud('field-technicians/availability', {
+                                technicianId,
+                                date: dateStr,
+                                dayType: nextType,
+                              })
+                            }
+                            refetchAvailability()
+                          } finally {
+                            setSavingDate(null)
+                          }
+                        }}
+                      >
+                        {day}
+                      </button>
+                    )
+                  }
+
+                  return <div className="grid grid-cols-7 gap-1">{cells}</div>
+                })()}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                {t('fieldTechnicians.availability.hint', 'Click a day to cycle through: work day → trip → unavailable → holiday → clear')}
+              </p>
             </div>
           )}
 
