@@ -1,0 +1,103 @@
+{
+  "technicianSchedule": {
+    "page": {
+      "title": "Technician schedule",
+      "description": "Calendar view of technician reservations in the selected date range.",
+      "loading": "Loading schedule...",
+      "error": "Failed to load schedule.",
+      "empty": {
+        "title": "No reservations in this range",
+        "description": "Try another week or adjust the technician and type filters."
+      }
+    },
+    "nav": { "group": "Service" },
+    "summary": { "count": "{{count}} reservations" },
+    "filters": {
+      "allTechnicians": "All technicians",
+      "unknownTechnician": "Unknown technician"
+    },
+    "actions": {
+      "add": "Add reservation",
+      "edit": "Edit",
+      "cancel": "Cancel reservation"
+    },
+    "confirm": {
+      "cancel": "Cancel reservation?"
+    },
+    "flash": {
+      "created": "Reservation created.",
+      "updated": "Reservation updated.",
+      "cancelled": "Reservation cancelled."
+    },
+    "errors": {
+      "unauthorized": "Unauthorized",
+      "cancelFailed": "Failed to cancel reservation."
+    },
+    "type": {
+      "client_visit": "Client visit",
+      "internal_work": "Internal work",
+      "leave": "Leave",
+      "training": "Training"
+    },
+    "status": {
+      "auto_confirmed": "Auto confirmed",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled"
+    },
+    "calendar": {
+      "orderLink": "Order"
+    },
+    "details": {
+      "dialogDescription": "Reservation details and actions",
+      "close": "Close",
+      "time": "Time",
+      "technicians": "Technicians",
+      "customer": "Customer",
+      "address": "Address",
+      "vehicle": "Vehicle",
+      "order": "Order",
+      "notes": "Notes"
+    },
+    "form": {
+      "create": {
+        "title": "New reservation",
+        "submit": "Create reservation"
+      },
+      "edit": {
+        "title": "Edit reservation",
+        "submit": "Save changes"
+      },
+      "groups": {
+        "type": "Type",
+        "time": "Time slot",
+        "technicians": "Technicians",
+        "vehicle": "Vehicle",
+        "trip": "Trip details",
+        "notes": "Notes"
+      },
+      "fields": {
+        "reservationType": "Reservation type",
+        "startsAt": "Start",
+        "endsAt": "End",
+        "technicians": "Technicians",
+        "vehicleId": "Vehicle ID",
+        "vehicleLabel": "Vehicle label",
+        "customerName": "Customer name",
+        "address": "Address",
+        "notes": "Notes"
+      },
+      "errors": {
+        "notFound": "Reservation not found.",
+        "editLocked": "Only manual reservations can be edited.",
+        "invalidRange": "End time must be after start time.",
+        "technicianRequired": "Select at least one technician."
+      }
+    },
+    "audit": {
+      "create": "Create reservation",
+      "update": "Update reservation",
+      "cancel": "Cancel reservation",
+      "delete": "Delete reservation"
+    }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "technicianSchedule": {
+    "page": {
+      "title": "Grafik techników",
+      "description": "Widok kalendarza rezerwacji techników w wybranym zakresie dat.",
+      "loading": "Ładowanie grafiku...",
+      "error": "Nie udało się załadować grafiku.",
+      "empty": {
+        "title": "Brak rezerwacji w tym zakresie",
+        "description": "Spróbuj innego tygodnia albo zmień filtry technika i typu rezerwacji."
+      }
+    },
+    "nav": { "group": "Serwis" },
+    "summary": { "count": "{{count}} rezerwacji" },
+    "filters": {
+      "allTechnicians": "Wszyscy technicy",
+      "unknownTechnician": "Nieznany technik"
+    },
+    "actions": {
+      "add": "Dodaj rezerwację",
+      "edit": "Edytuj",
+      "cancel": "Anuluj rezerwację"
+    },
+    "confirm": {
+      "cancel": "Anulować rezerwację?"
+    },
+    "flash": {
+      "created": "Rezerwacja utworzona.",
+      "updated": "Rezerwacja zaktualizowana.",
+      "cancelled": "Rezerwacja anulowana."
+    },
+    "errors": {
+      "unauthorized": "Brak autoryzacji",
+      "cancelFailed": "Nie udało się anulować rezerwacji."
+    },
+    "type": {
+      "client_visit": "Wizyta u klienta",
+      "internal_work": "Praca wewnętrzna",
+      "leave": "Nieobecność",
+      "training": "Szkolenie"
+    },
+    "status": {
+      "auto_confirmed": "Potwierdzona automatycznie",
+      "confirmed": "Potwierdzona",
+      "cancelled": "Anulowana"
+    },
+    "calendar": {
+      "orderLink": "Zlecenie"
+    },
+    "details": {
+      "dialogDescription": "Szczegóły rezerwacji i dostępne akcje",
+      "close": "Zamknij",
+      "time": "Czas",
+      "technicians": "Technicy",
+      "customer": "Klient",
+      "address": "Adres",
+      "vehicle": "Pojazd",
+      "order": "Zlecenie",
+      "notes": "Notatki"
+    },
+    "form": {
+      "create": {
+        "title": "Nowa rezerwacja",
+        "submit": "Utwórz rezerwację"
+      },
+      "edit": {
+        "title": "Edytuj rezerwację",
+        "submit": "Zapisz zmiany"
+      },
+      "groups": {
+        "type": "Typ",
+        "time": "Przedział czasu",
+        "technicians": "Technicy",
+        "vehicle": "Pojazd",
+        "trip": "Szczegóły wyjazdu",
+        "notes": "Notatki"
+      },
+      "fields": {
+        "reservationType": "Typ rezerwacji",
+        "startsAt": "Początek",
+        "endsAt": "Koniec",
+        "technicians": "Technicy",
+        "vehicleId": "ID pojazdu",
+        "vehicleLabel": "Etykieta pojazdu",
+        "customerName": "Nazwa klienta",
+        "address": "Adres",
+        "notes": "Notatki"
+      },
+      "errors": {
+        "notFound": "Nie znaleziono rezerwacji.",
+        "editLocked": "Edytować można tylko rezerwacje ręczne.",
+        "invalidRange": "Czas zakończenia musi być późniejszy od czasu rozpoczęcia.",
+        "technicianRequired": "Wybierz co najmniej jednego technika."
+      }
+    },
+    "audit": {
+      "create": "Utwórz rezerwację",
+      "update": "Zaktualizuj rezerwację",
+      "cancel": "Anuluj rezerwację",
+      "delete": "Usuń rezerwację"
+    }
+  }
+}
