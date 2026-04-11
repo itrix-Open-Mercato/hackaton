@@ -1,0 +1,2 @@
+# Shell scripts must use LF so Alpine/BusyBox sh in Docker does not fail (CRLF causes "illegal option -").
+docker/scripts/*.sh text eol=lf
