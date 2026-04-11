@@ -52,6 +52,7 @@ type CompanySeed = {
   primaryPhone?: string | null
   websiteUrl?: string | null
   industry?: string | null
+  domain?: string | null
 }
 
 type MachineInstanceSeed = {
@@ -326,10 +327,11 @@ const COMPANY_SEEDS: CompanySeed[] = [
     displayName: 'Fabryka Części Sp. z o.o.',
     legalName: 'Fabryka Części Sp. z o.o.',
     brandName: 'Fabryka Części',
-    primaryEmail: 'serwis@fabryka-czesci.example',
+    primaryEmail: 'lukasz.chrusciel@commerceweavers.com',
     primaryPhone: '+48 601 222 333',
     websiteUrl: 'https://fabryka-czesci.example',
     industry: 'Produkcja przemysłowa',
+    domain: 'commerceweavers.com',
   },
   {
     displayName: 'Biurowiec Alfa Park Sp. z o.o.',
@@ -646,6 +648,7 @@ async function ensureCompany(
   profile.brandName = seed.brandName ?? null
   profile.websiteUrl = seed.websiteUrl ?? null
   profile.industry = seed.industry ?? null
+  if (seed.domain) profile.domain = seed.domain
 
   em.persist(profile)
   await em.flush()
