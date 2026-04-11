@@ -714,6 +714,12 @@ export default function FieldTechnicianDetailPage({ params }: { params?: { id?: 
           {/* Availability tab */}
           {activeTab === 'availability' && (
             <div className="space-y-4">
+              {/* DEBUG — remove after fix */}
+              {(availabilityData?.items ?? []).length > 0 && (
+                <pre className="rounded border bg-muted p-2 text-xs overflow-auto max-h-32">
+                  {JSON.stringify((availabilityData?.items ?? []).slice(0, 3), null, 2)}
+                </pre>
+              )}
               {/* Month navigation */}
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-semibold flex items-center gap-2">
