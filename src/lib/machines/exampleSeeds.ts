@@ -1,8 +1,8 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { CatalogProduct } from '@open-mercato/core/modules/catalog/data/entities'
 import { CustomerCompanyProfile, CustomerEntity } from '@open-mercato/core/modules/customers/data/entities'
-import { MachineCatalogPartTemplate, MachineCatalogProfile } from '@/modules/machine_catalog/data/entities'
-import { MachineInstance } from '@/modules/machine_instances/data/entities'
+import { MachineCatalogPartTemplate, MachineCatalogProfile } from '../../modules/machine_catalog/data/entities'
+import { MachineInstance } from '../../modules/machine_instances/data/entities'
 
 export type MachineSeedScope = {
   tenantId: string

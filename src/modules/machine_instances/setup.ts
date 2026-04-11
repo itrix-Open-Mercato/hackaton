@@ -1,5 +1,5 @@
 import type { ModuleSetupConfig } from '@open-mercato/shared/modules/setup'
-import { seedMachineInstanceExamples } from '@/lib/machines/exampleSeeds'
+import { seedMachineInstanceExamples } from '../../lib/machines/exampleSeeds'
 
 export const setup: ModuleSetupConfig = {
   seedExamples: async (ctx) => {
