@@ -16,6 +16,24 @@ import { ENTITY_TYPE } from '../lib/constants'
 
 const MAX_TICKET_NUMBER_RETRIES = 3
 
+export async function validateContactPersonBelongsToCompany(
+  contactPersonId: string,
+  customerEntityId: string,
+  em: EntityManager,
+): Promise<void> {
+  const knex = (em as any).getConnection().getKnex()
+  const rows = await knex('customer_people')
+    .select('entity_id')
+    .where({ company_entity_id: customerEntityId, entity_id: contactPersonId })
+    .limit(1)
+  if (!rows.length) {
+    throw new CrudHttpError(422, {
+      error: 'Contact person does not belong to the selected company',
+      field: 'contact_person_id',
+    })
+  }
+}
+
 export const ticketCrudEvents: CrudEventsConfig<ServiceTicket> = {
   module: 'service_tickets',
   entity: 'ticket',
@@ -74,6 +92,15 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
     const scope = ensureScope(ctx)
     const de = ctx.container.resolve('dataEngine') as DataEngine
     const em = ctx.container.resolve('em') as EntityManager
+
+    if (parsed.contact_person_id && parsed.customer_entity_id) {
+      await validateContactPersonBelongsToCompany(parsed.contact_person_id, parsed.customer_entity_id, em)
+    } else if (parsed.contact_person_id && !parsed.customer_entity_id) {
+      throw new CrudHttpError(422, {
+        error: 'Contact person requires a company to be selected',
+        field: 'contact_person_id',
+      })
+    }
 
     let ticket: ServiceTicket | null = null
     for (let attempt = 0; attempt < MAX_TICKET_NUMBER_RETRIES; attempt++) {
@@ -156,6 +183,24 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
       deletedAt: null,
     } as FilterQuery<ServiceTicket>)
     if (!existing) throw new CrudHttpError(404, { error: 'Service ticket not found' })
+
+    const companyChanging =
+      parsed.customer_entity_id !== undefined &&
+      parsed.customer_entity_id !== existing.customerEntityId
+    const effectiveCompanyId = parsed.customer_entity_id !== undefined ? parsed.customer_entity_id : existing.customerEntityId
+    // When company changes without an explicit contact_person_id, the apply function will
+    // clear the contact person — skip validation in that case.
+    const effectivePersonId = parsed.contact_person_id !== undefined
+      ? parsed.contact_person_id
+      : (companyChanging ? null : existing.contactPersonId)
+    if (effectivePersonId && effectiveCompanyId) {
+      await validateContactPersonBelongsToCompany(effectivePersonId, effectiveCompanyId, em)
+    } else if (effectivePersonId && !effectiveCompanyId) {
+      throw new CrudHttpError(422, {
+        error: 'Contact person requires a company to be selected',
+        field: 'contact_person_id',
+      })
+    }
 
     const oldVisitDate = existing.visitDate
     const oldStatus = existing.status

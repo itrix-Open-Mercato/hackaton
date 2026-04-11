@@ -9,6 +9,7 @@ const TICKET_ID = '11111111-1111-4111-8111-111111111111'
 const COMPANY_ID_A = '22222222-2222-4222-8222-222222222222'
 const COMPANY_ID_B = '33333333-3333-4333-8333-333333333333'
 const PERSON_ID = '44444444-4444-4444-8444-444444444444'
+const PERSON_ID_OTHER = '55555555-5555-4555-8555-555555555555'
 
 jest.mock('@open-mercato/shared/lib/commands', () => ({
   registerCommand: (...args: unknown[]) => mockRegisterCommand(...args),
@@ -27,6 +28,7 @@ import {
   createTicketCommand,
   updateTicketCommand,
   deleteTicketCommand,
+  validateContactPersonBelongsToCompany,
 } from '../tickets'
 
 function createCtx(overrides: {
@@ -56,12 +58,23 @@ function createCtx(overrides: {
   }
 }
 
-function createKnexMock(maxNum: string | null = 'SRV-000009') {
-  return jest.fn(() => ({
-    max: jest.fn().mockReturnValue({
-      where: jest.fn().mockResolvedValue([{ max_num: maxNum }]),
-    }),
-  }))
+function createKnexMock(maxNum: string | null = 'SRV-000009', personRows: Record<string, unknown>[] = []) {
+  return jest.fn((table: string) => {
+    if (table === 'customer_people') {
+      return {
+        select: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(personRows),
+          }),
+        }),
+      }
+    }
+    return {
+      max: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{ max_num: maxNum }]),
+      }),
+    }
+  })
 }
 
 describe('service_tickets ticket commands', () => {
@@ -76,7 +89,7 @@ describe('service_tickets ticket commands', () => {
     })
     const em = {
       getConnection: () => ({
-        getKnex: () => createKnexMock(),
+        getKnex: () => createKnexMock('SRV-000009', [{ entity_id: PERSON_ID }]),
       }),
     }
 
@@ -124,6 +137,9 @@ describe('service_tickets ticket commands', () => {
       findOne: jest.fn().mockResolvedValue(existingTicket),
       find: jest.fn().mockResolvedValue([]),
       flush: jest.fn().mockResolvedValue(undefined),
+      getConnection: () => ({
+        getKnex: () => createKnexMock(),
+      }),
     }
 
     const result = await updateTicketCommand.execute(
@@ -164,6 +180,9 @@ describe('service_tickets ticket commands', () => {
       findOne: jest.fn().mockResolvedValue(existingTicket),
       find: jest.fn().mockResolvedValue([]),
       flush: jest.fn().mockResolvedValue(undefined),
+      getConnection: () => ({
+        getKnex: () => createKnexMock('SRV-000009', [{ entity_id: PERSON_ID }]),
+      }),
     }
 
     const result = await updateTicketCommand.execute(
@@ -201,6 +220,188 @@ describe('service_tickets ticket commands', () => {
         newStatus: 'scheduled',
       }),
     )
+  })
+
+  describe('validateContactPersonBelongsToCompany', () => {
+    function createValidationEm(personRows: Record<string, unknown>[]) {
+      const mockSelect = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue(personRows),
+        }),
+      })
+      const mockKnex = jest.fn(() => ({
+        select: mockSelect,
+      }))
+      return {
+        getConnection: () => ({
+          getKnex: () => mockKnex,
+        }),
+      }
+    }
+
+    it('passes when contact person belongs to the company', async () => {
+      const em = createValidationEm([{ entity_id: PERSON_ID }])
+      await expect(
+        validateContactPersonBelongsToCompany(PERSON_ID, COMPANY_ID_A, em as any),
+      ).resolves.toBeUndefined()
+    })
+
+    it('throws 422 when contact person does not belong to the company', async () => {
+      const em = createValidationEm([])
+      await expect(
+        validateContactPersonBelongsToCompany(PERSON_ID_OTHER, COMPANY_ID_A, em as any),
+      ).rejects.toMatchObject({
+        status: 422,
+      })
+    })
+  })
+
+  it('rejects create when contact person does not belong to the company', async () => {
+    const mockSelect = jest.fn().mockReturnValue({
+      where: jest.fn().mockReturnValue({
+        limit: jest.fn().mockResolvedValue([]),
+      }),
+    })
+    const mockKnex = jest.fn(() => ({
+      select: mockSelect,
+    }))
+    const em = {
+      getConnection: () => ({
+        getKnex: () => mockKnex,
+      }),
+    }
+
+    await expect(
+      createTicketCommand.execute(
+        {
+          service_type: 'maintenance',
+          customer_entity_id: COMPANY_ID_A,
+          contact_person_id: PERSON_ID,
+        },
+        createCtx({
+          dataEngine: { createOrmEntity: jest.fn() },
+          em,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      status: 422,
+    })
+  })
+
+  it('rejects create when contact person is set without a company', async () => {
+    const em = {
+      getConnection: () => ({
+        getKnex: () => jest.fn(),
+      }),
+    }
+
+    await expect(
+      createTicketCommand.execute(
+        {
+          service_type: 'maintenance',
+          contact_person_id: PERSON_ID,
+        },
+        createCtx({
+          dataEngine: { createOrmEntity: jest.fn() },
+          em,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      status: 422,
+    })
+  })
+
+  it('allows create with company but no contact person', async () => {
+    const createOrmEntity = jest.fn().mockResolvedValue({
+      id: TICKET_ID,
+      ticketNumber: 'SRV-000010',
+    })
+    const em = {
+      getConnection: () => ({
+        getKnex: () => createKnexMock(),
+      }),
+    }
+
+    const result = await createTicketCommand.execute(
+      {
+        service_type: 'maintenance',
+        customer_entity_id: COMPANY_ID_A,
+      },
+      createCtx({
+        dataEngine: { createOrmEntity },
+        em,
+      }),
+    )
+
+    expect(result).toEqual({ id: TICKET_ID, ticketNumber: 'SRV-000010' })
+  })
+
+  it('allows create with neither company nor contact person', async () => {
+    const createOrmEntity = jest.fn().mockResolvedValue({
+      id: TICKET_ID,
+      ticketNumber: 'SRV-000010',
+    })
+    const em = {
+      getConnection: () => ({
+        getKnex: () => createKnexMock(),
+      }),
+    }
+
+    const result = await createTicketCommand.execute(
+      {
+        service_type: 'maintenance',
+      },
+      createCtx({
+        dataEngine: { createOrmEntity },
+        em,
+      }),
+    )
+
+    expect(result).toEqual({ id: TICKET_ID, ticketNumber: 'SRV-000010' })
+  })
+
+  it('rejects update when contact person does not belong to the new company', async () => {
+    const existingTicket = {
+      id: TICKET_ID,
+      customerEntityId: COMPANY_ID_A,
+      contactPersonId: PERSON_ID,
+      visitDate: null,
+      status: 'new',
+    }
+    const mockSelect = jest.fn().mockReturnValue({
+      where: jest.fn().mockReturnValue({
+        limit: jest.fn().mockResolvedValue([]),
+      }),
+    })
+    const em = {
+      findOne: jest.fn().mockResolvedValue(existingTicket),
+      find: jest.fn().mockResolvedValue([]),
+      flush: jest.fn().mockResolvedValue(undefined),
+      getConnection: () => ({
+        getKnex: () => jest.fn(() => ({
+          select: mockSelect,
+        })),
+      }),
+    }
+
+    await expect(
+      updateTicketCommand.execute(
+        {
+          id: TICKET_ID,
+          customer_entity_id: COMPANY_ID_B,
+          contact_person_id: PERSON_ID,
+        },
+        createCtx({
+          dataEngine: {
+            updateOrmEntity: jest.fn(),
+            createOrmEntity: jest.fn(),
+          },
+          em,
+        }),
+      ),
+    ).rejects.toMatchObject({
+      status: 422,
+    })
   })
 
   it('soft deletes tickets by id', async () => {

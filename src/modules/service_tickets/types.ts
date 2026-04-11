@@ -16,4 +16,7 @@ export type ServiceTicketListItem = {
   tenantId?: string
   organizationId?: string
   createdAt?: string | null
+  _service_tickets?: {
+    companyName?: string | null
+  }
 }

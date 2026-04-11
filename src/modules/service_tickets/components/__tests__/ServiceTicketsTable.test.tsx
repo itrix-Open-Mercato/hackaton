@@ -57,6 +57,10 @@ jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }))
 
+jest.mock('../customerOptions', () => ({
+  searchCompanies: jest.fn().mockResolvedValue([]),
+}))
+
 jest.mock('@open-mercato/ui/backend/utils/crud', () => ({
   fetchCrudList: (...args: unknown[]) => mockFetchCrudList(...args),
   deleteCrud: (...args: unknown[]) => mockDeleteCrud(...args),
