@@ -1,0 +1,184 @@
+{
+  "fieldTechnicians": {
+    "page": { "title": "Serwisanci" },
+    "nav": { "group": "Serwis" },
+    "create": { "title": "Nowy serwisant" },
+    "search": { "label": "Serwisant" },
+    "locationStatus": {
+      "in_office": "W biurze",
+      "on_trip": "W delegacji",
+      "at_client": "Na miejscu u klienta",
+      "unavailable": "Niedostępny"
+    },
+    "table": {
+      "title": "Serwisanci",
+      "column": {
+        "name": "Imię i nazwisko",
+        "firstName": "Imię",
+        "lastName": "Nazwisko",
+        "locationStatus": "Lokalizacja",
+        "email": "Email",
+        "skills": "Umiejętności",
+        "active": "Aktywny"
+      },
+      "filters": {
+        "locationStatus": "Lokalizacja",
+        "active": "Tylko aktywni"
+      },
+      "actions": {
+        "create": "Dodaj serwisanta",
+        "view": "Karta serwisanta",
+        "delete": "Usuń"
+      },
+      "confirm": {
+        "delete": "Usunąć serwisanta?",
+        "deleteDesc": "Tej operacji nie można cofnąć."
+      },
+      "flash": { "deleted": "Serwisant usunięty." },
+      "error": {
+        "delete": "Nie udało się usunąć serwisanta.",
+        "generic": "Nie udało się załadować listy serwisantów."
+      }
+    },
+    "form": {
+      "loading": "Ładowanie profilu serwisanta…",
+      "create": {
+        "title": "Nowy serwisant",
+        "submit": "Utwórz serwisanta"
+      },
+      "edit": { "submit": "Zapisz zmiany" },
+      "fields": {
+        "displayName": {
+          "label": "Imię i nazwisko",
+          "placeholder": "np. Jan Kowalski"
+        },
+        "firstName": { "label": "Imię", "placeholder": "Jan" },
+        "lastName": { "label": "Nazwisko", "placeholder": "Kowalski" },
+        "email": { "label": "Email" },
+        "phone": { "label": "Telefon" },
+        "locationStatus": { "label": "Aktualna lokalizacja" },
+        "skills": {
+          "label": "Umiejętności / Specjalizacje",
+          "placeholder": "laser, CNC, druk 3D, klimatyzacja, pompy ciepła…",
+          "help": "Dodaj tagi umiejętności. Używane do filtrowania przy przydzielaniu zleceń serwisowych."
+        },
+        "languages": {
+          "label": "Języki komunikacji",
+          "placeholder": "PL, EN, DE…",
+          "help": "Dodaj kody języków. Ważne przy wyjazdach zagranicznych."
+        },
+        "notes": {
+          "label": "Notatki",
+          "placeholder": "Dodatkowe informacje o serwisancie…"
+        },
+        "isActive": { "label": "Aktywny" }
+      },
+      "groups": {
+        "identity": "Dane identyfikacyjne",
+        "contact": "Kontakt",
+        "status": "Status",
+        "competencies": "Kompetencje",
+        "notes": "Notatki"
+      },
+      "flash": { "created": "Serwisant utworzony." }
+    },
+    "detail": {
+      "title": "Karta serwisanta",
+      "subtitle": "Karta Serwisanta",
+      "loading": "Ładowanie…",
+      "inactive": "Nieaktywny",
+      "noDate": "—",
+      "tabs": {
+        "overview": "Przegląd",
+        "certifications": "Uprawnienia i certyfikaty",
+        "edit": "Edytuj profil"
+      },
+      "section": {
+        "contact": "Dane kontaktowe",
+        "notes": "Notatki",
+        "skills": "Umiejętności i specjalizacje",
+        "languages": "Języki komunikacji",
+        "location": "Aktualna lokalizacja",
+        "links": "Powiązane moduły"
+      },
+      "fields": {
+        "vehicle": "Przypisany pojazd",
+        "currentOrder": "Bieżące zlecenie"
+      },
+      "skills": { "empty": "Brak zdefiniowanych umiejętności." },
+      "languages": { "empty": "Brak zdefiniowanych języków." },
+      "certs": {
+        "heading": "Uprawnienia i certyfikaty",
+        "add": "Dodaj uprawnienie",
+        "empty": "Brak dodanych uprawnień i certyfikatów."
+      },
+      "actions": { "delete": "Usuń" },
+      "confirm": {
+        "delete": "Usunąć serwisanta?",
+        "deleteDesc": "Tej operacji nie można cofnąć."
+      },
+      "flash": {
+        "deleted": "Serwisant usunięty.",
+        "updated": "Profil zaktualizowany.",
+        "certAdded": "Uprawnienie dodane.",
+        "certDeleted": "Uprawnienie usunięte."
+      },
+      "error": {
+        "delete": "Nie udało się usunąć serwisanta.",
+        "deleteCert": "Nie udało się usunąć uprawnienia."
+      },
+      "edit": { "title": "Edytuj profil" },
+      "viewStaffProfile": "Profil pracownika",
+      "links": {
+        "staffProfile": "Profil w module Pracownicy",
+        "availability": "Kalendarz dostępności"
+      }
+    },
+    "cert": {
+      "form": {
+        "title": "Nowe uprawnienie / certyfikat",
+        "submit": "Dodaj",
+        "name": "Nazwa certyfikatu / uprawnienia",
+        "namePlaceholder": "np. SEP do 1kV, prawo jazdy kat. B",
+        "certType": "Typ",
+        "code": "Numer certyfikatu",
+        "codePlaceholder": "Numer certyfikatu lub uprawnienia",
+        "issuedAt": "Data wydania",
+        "expiresAt": "Data ważności",
+        "issuedBy": "Wystawca",
+        "issuedByPlaceholder": "Urząd lub instytucja wystawiająca",
+        "notes": "Uwagi",
+        "group": {
+          "main": "Dane certyfikatu",
+          "dates": "Ważność",
+          "extra": "Dodatkowe informacje"
+        }
+      },
+      "type": {
+        "driving_license": "Prawo jazdy",
+        "other": "Inne"
+      },
+      "status": {
+        "expired": "Wygasłe",
+        "expiringSoon": "Wygasa wkrótce"
+      },
+      "field": {
+        "code": "Nr",
+        "issuedAt": "Wydano",
+        "expiresAt": "Ważne do",
+        "issuedBy": "Wystawca"
+      },
+      "confirm": { "delete": "Usunąć uprawnienie?" }
+    },
+    "audit": {
+      "create": "Utwórz serwisanta",
+      "update": "Aktualizuj serwisanta",
+      "delete": "Usuń serwisanta",
+      "cert": {
+        "create": "Dodaj uprawnienie",
+        "update": "Aktualizuj uprawnienie",
+        "delete": "Usuń uprawnienie"
+      }
+    }
+  }
+}

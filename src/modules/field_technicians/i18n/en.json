@@ -1,0 +1,184 @@
+{
+  "fieldTechnicians": {
+    "page": { "title": "Technicians" },
+    "nav": { "group": "Service" },
+    "create": { "title": "New technician" },
+    "search": { "label": "Technician" },
+    "locationStatus": {
+      "in_office": "In office",
+      "on_trip": "On trip / Delegation",
+      "at_client": "At client site",
+      "unavailable": "Unavailable"
+    },
+    "table": {
+      "title": "Technicians",
+      "column": {
+        "name": "Name",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "locationStatus": "Location",
+        "email": "Email",
+        "skills": "Skills",
+        "active": "Active"
+      },
+      "filters": {
+        "locationStatus": "Location",
+        "active": "Active only"
+      },
+      "actions": {
+        "create": "Add technician",
+        "view": "View card",
+        "delete": "Delete"
+      },
+      "confirm": {
+        "delete": "Delete technician?",
+        "deleteDesc": "This action cannot be undone."
+      },
+      "flash": { "deleted": "Technician deleted." },
+      "error": {
+        "delete": "Failed to delete technician.",
+        "generic": "Failed to load technicians."
+      }
+    },
+    "form": {
+      "loading": "Loading technician profile…",
+      "create": {
+        "title": "New technician",
+        "submit": "Create technician"
+      },
+      "edit": { "submit": "Save changes" },
+      "fields": {
+        "displayName": {
+          "label": "Full name",
+          "placeholder": "e.g. Jan Kowalski"
+        },
+        "firstName": { "label": "First name", "placeholder": "Jan" },
+        "lastName": { "label": "Last name", "placeholder": "Kowalski" },
+        "email": { "label": "Email" },
+        "phone": { "label": "Phone" },
+        "locationStatus": { "label": "Current location" },
+        "skills": {
+          "label": "Skills / Specializations",
+          "placeholder": "laser, CNC, 3D print, air conditioning…",
+          "help": "Add skill tags. Used for technician matching when assigning service orders."
+        },
+        "languages": {
+          "label": "Languages",
+          "placeholder": "PL, EN, DE…",
+          "help": "Add language codes. Important for international assignments."
+        },
+        "notes": {
+          "label": "Notes",
+          "placeholder": "Additional information…"
+        },
+        "isActive": { "label": "Active" }
+      },
+      "groups": {
+        "identity": "Identity",
+        "contact": "Contact",
+        "status": "Status",
+        "competencies": "Competencies",
+        "notes": "Notes"
+      },
+      "flash": { "created": "Technician created." }
+    },
+    "detail": {
+      "title": "Technician card",
+      "subtitle": "Service Technician Card",
+      "loading": "Loading…",
+      "inactive": "Inactive",
+      "noDate": "—",
+      "tabs": {
+        "overview": "Overview",
+        "certifications": "Certifications & Permissions",
+        "edit": "Edit profile"
+      },
+      "section": {
+        "contact": "Contact & Identity",
+        "notes": "Notes",
+        "skills": "Skills & Specializations",
+        "languages": "Languages",
+        "location": "Current location",
+        "links": "Linked modules"
+      },
+      "fields": {
+        "vehicle": "Default vehicle",
+        "currentOrder": "Current assignment"
+      },
+      "skills": { "empty": "No skills specified." },
+      "languages": { "empty": "No languages specified." },
+      "certs": {
+        "heading": "Certifications & Permissions",
+        "add": "Add certification",
+        "empty": "No certifications added yet."
+      },
+      "actions": { "delete": "Delete" },
+      "confirm": {
+        "delete": "Delete technician?",
+        "deleteDesc": "This action cannot be undone."
+      },
+      "flash": {
+        "deleted": "Technician deleted.",
+        "updated": "Profile updated.",
+        "certAdded": "Certification added.",
+        "certDeleted": "Certification removed."
+      },
+      "error": {
+        "delete": "Failed to delete technician.",
+        "deleteCert": "Failed to remove certification."
+      },
+      "edit": { "title": "Edit profile" },
+      "viewStaffProfile": "Staff profile",
+      "links": {
+        "staffProfile": "Staff member profile",
+        "availability": "Availability calendar"
+      }
+    },
+    "cert": {
+      "form": {
+        "title": "New certification",
+        "submit": "Add certification",
+        "name": "Certificate name",
+        "namePlaceholder": "e.g. SEP up to 1kV, category B driving license",
+        "certType": "Type",
+        "code": "Certificate number",
+        "codePlaceholder": "Certificate or permit number",
+        "issuedAt": "Issued date",
+        "expiresAt": "Expiry date",
+        "issuedBy": "Issued by",
+        "issuedByPlaceholder": "Issuing authority or institution",
+        "notes": "Notes",
+        "group": {
+          "main": "Certificate details",
+          "dates": "Validity",
+          "extra": "Additional info"
+        }
+      },
+      "type": {
+        "driving_license": "Driving license",
+        "other": "Other"
+      },
+      "status": {
+        "expired": "Expired",
+        "expiringSoon": "Expiring soon"
+      },
+      "field": {
+        "code": "No",
+        "issuedAt": "Issued",
+        "expiresAt": "Expires",
+        "issuedBy": "Issued by"
+      },
+      "confirm": { "delete": "Remove certification?" }
+    },
+    "audit": {
+      "create": "Create technician",
+      "update": "Update technician",
+      "delete": "Delete technician",
+      "cert": {
+        "create": "Add certification",
+        "update": "Update certification",
+        "delete": "Remove certification"
+      }
+    }
+  }
+}
