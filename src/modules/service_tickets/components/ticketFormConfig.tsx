@@ -209,11 +209,9 @@ export function buildTicketGroups(
               emptyProfile: t('service_tickets.form.machineHints.emptyProfile'),
               machineModelLabel: t('service_tickets.form.machineHints.machineModel'),
               locationLabel: t('service_tickets.form.machineHints.location'),
-              serviceDurationLabel: t('service_tickets.form.machineHints.serviceDuration'),
               maintenanceIntervalLabel: t('service_tickets.form.machineHints.maintenanceInterval'),
-              serviceNotesLabel: t('service_tickets.form.machineHints.serviceNotes'),
-              partsTitle: t('service_tickets.form.machineHints.partsTitle'),
-              emptyParts: t('service_tickets.form.machineHints.emptyParts'),
+              serviceTypesTitle: t('service_tickets.form.machineHints.serviceTypesTitle'),
+              emptyServiceTypes: t('service_tickets.form.machineHints.emptyServiceTypes'),
             }}
             setMachineId={(value) => setValue('machine_instance_id', value)}
             setCustomerId={(value) => setValue('customer_entity_id', value)}

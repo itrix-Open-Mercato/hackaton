@@ -1,12 +1,27 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { CatalogProduct } from '@open-mercato/core/modules/catalog/data/entities'
 import { CustomerCompanyProfile, CustomerEntity } from '@open-mercato/core/modules/customers/data/entities'
-import { MachineCatalogPartTemplate, MachineCatalogProfile } from '../../modules/machine_catalog/data/entities'
+import {
+  MachineCatalogProfile,
+  MachineCatalogServiceType,
+  MachineCatalogServiceTypeSkill,
+  MachineCatalogServiceTypeCertification,
+} from '../../modules/machine_catalog/data/entities'
 import { MachineInstance } from '../../modules/machine_instances/data/entities'
 
 export type MachineSeedScope = {
   tenantId: string
   organizationId: string
+}
+
+type ServiceTypeSeed = {
+  serviceType: string
+  defaultTeamSize: number
+  defaultServiceDurationMinutes: number
+  startupNotes?: string | null
+  serviceNotes?: string | null
+  requiredSkills: string[]
+  requiredCertifications: string[]
 }
 
 type ProductSeed = {
@@ -21,27 +36,10 @@ type ProductSeed = {
   profile: {
     machineFamily: string
     modelCode: string
-    supportedServiceTypes: string[]
-    requiredSkills: string[]
-    requiredCertifications?: string[] | null
-    defaultTeamSize: number
-    defaultServiceDurationMinutes: number
     preventiveMaintenanceIntervalDays: number
     defaultWarrantyMonths: number
-    startupNotes?: string | null
-    serviceNotes?: string | null
   }
-  partTemplates: Array<{
-    templateType: 'component' | 'consumable' | 'service_kit_item'
-    serviceContext: 'startup' | 'preventive' | 'repair' | 'reclamation' | 'maintenance_presence' | null
-    kitName: string
-    partName: string
-    partCode?: string | null
-    quantityDefault?: number | null
-    quantityUnit?: string | null
-    sortOrder: number
-    notes?: string | null
-  }>
+  serviceTypes: ServiceTypeSeed[]
 }
 
 type CompanySeed = {
@@ -84,6 +82,28 @@ type MachineInstanceSeed = {
   instanceNotes?: string | null
 }
 
+function buildServiceTypes(
+  supportedTypes: string[],
+  opts: {
+    defaultTeamSize: number
+    defaultServiceDurationMinutes: number
+    requiredSkills: string[]
+    requiredCertifications: string[]
+    startupNotes?: string | null
+    serviceNotes?: string | null
+  },
+): ServiceTypeSeed[] {
+  return supportedTypes.map((serviceType) => ({
+    serviceType,
+    defaultTeamSize: opts.defaultTeamSize,
+    defaultServiceDurationMinutes: opts.defaultServiceDurationMinutes,
+    requiredSkills: opts.requiredSkills,
+    requiredCertifications: opts.requiredCertifications,
+    startupNotes: opts.startupNotes,
+    serviceNotes: opts.serviceNotes,
+  }))
+}
+
 const PRODUCT_SEEDS: ProductSeed[] = [
   {
     code: 'PRD-CNC-6000',
@@ -109,58 +129,20 @@ const PRODUCT_SEEDS: ProductSeed[] = [
     profile: {
       machineFamily: 'Obrabiarki CNC',
       modelCode: 'PRD-CNC-6000',
-      supportedServiceTypes: ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
-      requiredSkills: ['cnc', 'hydraulika', 'mechanika precyzyjna'],
-      requiredCertifications: ['CE', 'ISO 9001'],
-      defaultTeamSize: 2,
-      defaultServiceDurationMinutes: 240,
       preventiveMaintenanceIntervalDays: 180,
       defaultWarrantyMonths: 36,
-      startupNotes: 'Dostęp do strefy produkcyjnej wymaga wcześniejszej awizacji i wejścia przez bramę B.',
-      serviceNotes: 'Przegląd pełny obejmuje zestaw A oraz kontrolę wrzeciona, pompy i enkodera.',
     },
-    partTemplates: [
+    serviceTypes: buildServiceTypes(
+      ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
       {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy A – przegląd 6-miesięczny',
-        partName: 'Filtr oleju hydraulicznego',
-        partCode: 'PRD-FLT-OH12',
-        quantityDefault: 2,
-        quantityUnit: 'szt.',
-        sortOrder: 10,
+        defaultTeamSize: 2,
+        defaultServiceDurationMinutes: 240,
+        requiredSkills: ['cnc', 'hydraulika', 'mechanika precyzyjna'],
+        requiredCertifications: ['CE', 'ISO 9001'],
+        startupNotes: 'Dostęp do strefy produkcyjnej wymaga wcześniejszej awizacji i wejścia przez bramę B.',
+        serviceNotes: 'Przegląd pełny obejmuje zestaw A oraz kontrolę wrzeciona, pompy i enkodera.',
       },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy A – przegląd 6-miesięczny',
-        partName: 'Pasek napędowy wrzeciona',
-        partCode: 'PRD-PSK-WRZ4',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 20,
-      },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy B – przegląd 12-miesięczny',
-        partName: 'Łożysko wrzeciona SKF 6206',
-        partCode: 'PRD-LOZ-6206',
-        quantityDefault: 2,
-        quantityUnit: 'szt.',
-        sortOrder: 30,
-      },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy B – przegląd 12-miesięczny',
-        partName: 'Kabel enkodera 5m',
-        partCode: 'PRD-KBL-ENC5',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 40,
-      },
-    ],
+    ),
   },
   {
     code: 'PRD-HP-TM25',
@@ -188,58 +170,20 @@ const PRODUCT_SEEDS: ProductSeed[] = [
     profile: {
       machineFamily: 'HVAC – Pompy ciepła',
       modelCode: 'PRD-HP-TM25',
-      supportedServiceTypes: ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
-      requiredSkills: ['hvac', 'diagnostyka chłodnicza'],
-      requiredCertifications: ['F-GAZ kat. I'],
-      defaultTeamSize: 1,
-      defaultServiceDurationMinutes: 180,
       preventiveMaintenanceIntervalDays: 365,
       defaultWarrantyMonths: 36,
-      startupNotes: 'Przy pierwszym uruchomieniu wymagane potwierdzenie obiegu hydraulicznego i wpis do karty F-GAZ.',
-      serviceNotes: 'Roczny przegląd obejmuje kontrolę F-GAZ, skraplacza i układu hydraulicznego.',
     },
-    partTemplates: [
+    serviceTypes: buildServiceTypes(
+      ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
       {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy A – przegląd roczny',
-        partName: 'Filtr powietrza zewnętrzny G4',
-        partCode: 'PRD-FLT-G4EX',
-        quantityDefault: 2,
-        quantityUnit: 'szt.',
-        sortOrder: 10,
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 180,
+        requiredSkills: ['hvac', 'diagnostyka chłodnicza'],
+        requiredCertifications: ['F-GAZ kat. I'],
+        startupNotes: 'Przy pierwszym uruchomieniu wymagane potwierdzenie obiegu hydraulicznego i wpis do karty F-GAZ.',
+        serviceNotes: 'Roczny przegląd obejmuje kontrolę F-GAZ, skraplacza i układu hydraulicznego.',
       },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy A – przegląd roczny',
-        partName: 'Filtr wody – wkład 1" siatkowy',
-        partCode: 'PRD-FLT-W1IN',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 20,
-      },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy B – przegląd 2-letni',
-        partName: 'Zawór rozprężny elektroniczny',
-        partCode: 'PRD-ZAW-EXV1',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 30,
-      },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy B – przegląd 2-letni',
-        partName: 'Kondensator rozruchowy sprężarki',
-        partCode: 'PRD-ELK-CAP4',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 40,
-      },
-    ],
+    ),
   },
   {
     code: 'PRD-PRT-LP800',
@@ -267,58 +211,20 @@ const PRODUCT_SEEDS: ProductSeed[] = [
     profile: {
       machineFamily: 'Drukarki przemysłowe',
       modelCode: 'PRD-PRT-LP800',
-      supportedServiceTypes: ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
-      requiredSkills: ['druk termotransferowy', 'utrzymanie ruchu'],
-      requiredCertifications: null,
-      defaultTeamSize: 1,
-      defaultServiceDurationMinutes: 90,
       preventiveMaintenanceIntervalDays: 180,
       defaultWarrantyMonths: 36,
-      startupNotes: 'Po wymianie głowicy należy wykonać kalibrację i potwierdzić przebieg wydruku.',
-      serviceNotes: 'Przeglądy cykliczne obejmują czyszczenie mechanizmu i kontrolę przebiegu wydruku.',
     },
-    partTemplates: [
+    serviceTypes: buildServiceTypes(
+      ['commissioning', 'regular', 'maintenance', 'warranty_claim'],
       {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy A – czyszczenie 6-miesięczne',
-        partName: 'Wałek dociskowy gumy',
-        partCode: 'PRD-WLK-DOC1',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 10,
+        defaultTeamSize: 1,
+        defaultServiceDurationMinutes: 90,
+        requiredSkills: ['druk termotransferowy', 'utrzymanie ruchu'],
+        requiredCertifications: [],
+        startupNotes: 'Po wymianie głowicy należy wykonać kalibrację i potwierdzić przebieg wydruku.',
+        serviceNotes: 'Przeglądy cykliczne obejmują czyszczenie mechanizmu i kontrolę przebiegu wydruku.',
       },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'preventive',
-        kitName: 'Zestaw serwisowy A – czyszczenie 6-miesięczne',
-        partName: 'Płyn czyszczący IPA 70% 250ml',
-        partCode: 'PRD-CHM-IPA7',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 20,
-      },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'repair',
-        kitName: 'Zestaw serwisowy B – wymiana głowicy',
-        partName: 'Głowica drukująca 300 DPI OEM',
-        partCode: 'PRD-GLW-300D',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 30,
-      },
-      {
-        templateType: 'service_kit_item',
-        serviceContext: 'repair',
-        kitName: 'Zestaw serwisowy B – wymiana głowicy',
-        partName: 'Czujnik końca taśmy',
-        partCode: 'PRD-SEN-TSM1',
-        quantityDefault: 1,
-        quantityUnit: 'szt.',
-        sortOrder: 40,
-      },
-    ],
+    ),
   },
 ]
 
@@ -538,15 +444,8 @@ async function ensureMachineProfile(
 
   record.machineFamily = seed.profile.machineFamily
   record.modelCode = seed.profile.modelCode
-  record.supportedServiceTypes = seed.profile.supportedServiceTypes
-  record.requiredSkills = seed.profile.requiredSkills
-  record.requiredCertifications = seed.profile.requiredCertifications ?? null
-  record.defaultTeamSize = seed.profile.defaultTeamSize
-  record.defaultServiceDurationMinutes = seed.profile.defaultServiceDurationMinutes
   record.preventiveMaintenanceIntervalDays = seed.profile.preventiveMaintenanceIntervalDays
   record.defaultWarrantyMonths = seed.profile.defaultWarrantyMonths
-  record.startupNotes = seed.profile.startupNotes ?? null
-  record.serviceNotes = seed.profile.serviceNotes ?? null
   record.isActive = true
 
   em.persist(record)
@@ -555,47 +454,76 @@ async function ensureMachineProfile(
   return record
 }
 
-async function ensurePartTemplate(
+async function ensureServiceType(
   em: EntityManager,
   scope: MachineSeedScope,
   machineProfileId: string,
-  seed: ProductSeed['partTemplates'][number],
+  seed: ServiceTypeSeed,
+  sortOrder: number,
 ): Promise<void> {
-  let record = await em.findOne(MachineCatalogPartTemplate, {
+  let record = await em.findOne(MachineCatalogServiceType, {
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
     machineProfileId,
-    kitName: seed.kitName,
-    partName: seed.partName,
+    serviceType: seed.serviceType,
     deletedAt: null,
   })
 
   if (!record) {
     const now = new Date()
-    record = em.create(MachineCatalogPartTemplate, {
+    record = em.create(MachineCatalogServiceType, {
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
       machineProfileId,
-      partName: seed.partName,
-      templateType: seed.templateType,
-      sortOrder: seed.sortOrder,
+      serviceType: seed.serviceType,
+      sortOrder,
       createdAt: now,
       updatedAt: now,
     })
   }
 
-  record.partCatalogProductId = null
-  record.templateType = seed.templateType
-  record.serviceContext = seed.serviceContext
-  record.kitName = seed.kitName
-  record.partName = seed.partName
-  record.partCode = seed.partCode ?? null
-  record.quantityDefault = seed.quantityDefault ?? null
-  record.quantityUnit = seed.quantityUnit ?? null
-  record.sortOrder = seed.sortOrder
-  record.notes = seed.notes ?? null
+  record.defaultTeamSize = seed.defaultTeamSize
+  record.defaultServiceDurationMinutes = seed.defaultServiceDurationMinutes
+  record.startupNotes = seed.startupNotes ?? null
+  record.serviceNotes = seed.serviceNotes ?? null
+  record.sortOrder = sortOrder
 
   em.persist(record)
+  await em.flush()
+
+  // Skills
+  for (const skillName of seed.requiredSkills) {
+    const existing = await em.findOne(MachineCatalogServiceTypeSkill, {
+      machineServiceTypeId: record.id,
+      skillName,
+    })
+    if (!existing) {
+      em.persist(em.create(MachineCatalogServiceTypeSkill, {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        machineServiceTypeId: record.id,
+        skillName,
+      }))
+    }
+  }
+
+  // Certifications
+  for (const certName of seed.requiredCertifications) {
+    const existing = await em.findOne(MachineCatalogServiceTypeCertification, {
+      machineServiceTypeId: record.id,
+      certificationName: certName,
+    })
+    if (!existing) {
+      em.persist(em.create(MachineCatalogServiceTypeCertification, {
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        machineServiceTypeId: record.id,
+        certificationName: certName,
+      }))
+    }
+  }
+
+  await em.flush()
 }
 
 async function ensureCompany(
@@ -721,8 +649,8 @@ export async function seedMachineCatalogExamples(
   for (const seed of PRODUCT_SEEDS) {
     const product = await ensureCatalogProduct(em, scope, seed)
     const profile = await ensureMachineProfile(em, scope, product, seed)
-    for (const partTemplate of seed.partTemplates) {
-      await ensurePartTemplate(em, scope, profile.id, partTemplate)
+    for (let i = 0; i < seed.serviceTypes.length; i++) {
+      await ensureServiceType(em, scope, profile.id, seed.serviceTypes[i], i * 10)
     }
     await em.flush()
     productsByCode.set(seed.code, product)

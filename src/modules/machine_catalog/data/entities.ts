@@ -1,4 +1,4 @@
-import { Entity, PrimaryKey, Property, Index } from '@mikro-orm/core'
+import { Entity, PrimaryKey, Property, Index, Unique, OptionalProps } from '@mikro-orm/core'
 
 /**
  * Machine profile — extends catalog.product 1:1 with machine-specific metadata.
@@ -28,35 +28,12 @@ export class MachineCatalogProfile {
   @Property({ name: 'model_code', type: 'text', nullable: true })
   modelCode?: string | null
 
-  // Service requirements (stored as JSON arrays)
-  @Property({ name: 'supported_service_types', type: 'jsonb', nullable: true })
-  supportedServiceTypes?: string[] | null
-
-  @Property({ name: 'required_skills', type: 'jsonb', nullable: true })
-  requiredSkills?: string[] | null
-
-  @Property({ name: 'required_certifications', type: 'jsonb', nullable: true })
-  requiredCertifications?: string[] | null
-
-  // Service defaults
-  @Property({ name: 'default_team_size', type: 'int', nullable: true })
-  defaultTeamSize?: number | null
-
-  @Property({ name: 'default_service_duration_minutes', type: 'int', nullable: true })
-  defaultServiceDurationMinutes?: number | null
-
+  // Service schedule defaults (not per-service-type)
   @Property({ name: 'preventive_maintenance_interval_days', type: 'int', nullable: true })
   preventiveMaintenanceIntervalDays?: number | null
 
   @Property({ name: 'default_warranty_months', type: 'int', nullable: true })
   defaultWarrantyMonths?: number | null
-
-  // Notes
-  @Property({ name: 'startup_notes', type: 'text', nullable: true })
-  startupNotes?: string | null
-
-  @Property({ name: 'service_notes', type: 'text', nullable: true })
-  serviceNotes?: string | null
 
   // Standard columns
   @Property({ name: 'is_active', type: 'boolean', default: true })
@@ -73,13 +50,14 @@ export class MachineCatalogProfile {
 }
 
 /**
- * Machine part template — default service kit items for a machine profile.
- * e.g. "Zestaw A – przegląd 6-miesięczny" from przykladowe_maszyny.md
+ * Per-service-type configuration for a machine profile.
+ * Replaces the flat supportedServiceTypes/requiredSkills/etc. fields.
+ * One row per service type per profile (e.g. "regular", "commissioning").
  */
-@Entity({ tableName: 'machine_catalog_part_templates' })
-@Index({ name: 'machine_catalog_part_templates_profile_idx', properties: ['machineProfileId'] })
-@Index({ name: 'machine_catalog_part_templates_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
-export class MachineCatalogPartTemplate {
+@Entity({ tableName: 'machine_catalog_service_types' })
+@Index({ name: 'mcat_st_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'mcat_st_profile_idx', properties: ['machineProfileId'] })
+export class MachineCatalogServiceType {
   @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
   id!: string
 
@@ -89,44 +67,29 @@ export class MachineCatalogPartTemplate {
   @Property({ name: 'organization_id', type: 'uuid' })
   organizationId!: string
 
-  // Link to machine profile — FK ID only, no ORM relation
+  // FK → machine_catalog_profiles.id — FK ID only
   @Property({ name: 'machine_profile_id', type: 'uuid' })
   machineProfileId!: string
 
-  // Link to catalog product (the part/component) — FK ID only
-  @Property({ name: 'part_catalog_product_id', type: 'uuid', nullable: true })
-  partCatalogProductId?: string | null
+  // Free-text service type label, e.g. "regular", "commissioning", "warranty"
+  @Property({ name: 'service_type', type: 'text' })
+  serviceType!: string
 
-  // Template classification
-  @Property({ name: 'template_type', type: 'text' })
-  templateType!: string  // 'component' | 'consumable' | 'service_kit_item'
+  @Property({ name: 'default_team_size', type: 'int', nullable: true })
+  defaultTeamSize?: number | null
 
-  @Property({ name: 'service_context', type: 'text', nullable: true })
-  serviceContext?: string | null  // 'startup' | 'preventive' | 'repair' | 'reclamation'
+  @Property({ name: 'default_service_duration_minutes', type: 'int', nullable: true })
+  defaultServiceDurationMinutes?: number | null
 
-  @Property({ name: 'kit_name', type: 'text', nullable: true })
-  kitName?: string | null  // e.g. "Zestaw serwisowy A"
+  @Property({ name: 'startup_notes', type: 'text', nullable: true })
+  startupNotes?: string | null
 
-  // Part details (snapshot from catalog or manual)
-  @Property({ name: 'part_name', type: 'text' })
-  partName!: string
-
-  @Property({ name: 'part_code', type: 'text', nullable: true })
-  partCode?: string | null  // e.g. PRD-FLT-OH12
-
-  @Property({ name: 'quantity_default', type: 'decimal', precision: 10, scale: 3, nullable: true })
-  quantityDefault?: number | null
-
-  @Property({ name: 'quantity_unit', type: 'text', nullable: true })
-  quantityUnit?: string | null  // 'szt.' | 'l' | 'g' | 'kpl.'
+  @Property({ name: 'service_notes', type: 'text', nullable: true })
+  serviceNotes?: string | null
 
   @Property({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder: number = 0
 
-  @Property({ name: 'notes', type: 'text', nullable: true })
-  notes?: string | null
-
-  // Standard columns
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 
@@ -135,4 +98,101 @@ export class MachineCatalogPartTemplate {
 
   @Property({ name: 'deleted_at', type: Date, nullable: true })
   deletedAt?: Date | null
+}
+
+/**
+ * Required skill junction — soft-references technician_skills.name by text.
+ * Autosuggest pulls DISTINCT name from technician_skills within the org.
+ */
+@Entity({ tableName: 'machine_catalog_service_type_skills' })
+@Index({ name: 'mcat_sts_service_type_idx', properties: ['machineServiceTypeId'] })
+@Unique({ name: 'mcat_sts_unique', properties: ['machineServiceTypeId', 'skillName'] })
+export class MachineCatalogServiceTypeSkill {
+  [OptionalProps]?: 'createdAt'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  // FK → machine_catalog_service_types.id — FK ID only
+  @Property({ name: 'machine_service_type_id', type: 'uuid' })
+  machineServiceTypeId!: string
+
+  @Property({ name: 'skill_name', type: 'text' })
+  skillName!: string
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}
+
+/**
+ * Required certification junction — soft-references technician_certifications.name by text.
+ * Autosuggest pulls DISTINCT name from technician_certifications within the org.
+ */
+@Entity({ tableName: 'machine_catalog_service_type_certifications' })
+@Index({ name: 'mcat_stc_service_type_idx', properties: ['machineServiceTypeId'] })
+@Unique({ name: 'mcat_stc_unique', properties: ['machineServiceTypeId', 'certificationName'] })
+export class MachineCatalogServiceTypeCertification {
+  [OptionalProps]?: 'createdAt'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  // FK → machine_catalog_service_types.id — FK ID only
+  @Property({ name: 'machine_service_type_id', type: 'uuid' })
+  machineServiceTypeId!: string
+
+  @Property({ name: 'certification_name', type: 'text' })
+  certificationName!: string
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}
+
+/**
+ * Service part required for a given service type.
+ * Replaces MachineCatalogPartTemplate — simpler model: catalog product + quantity per service type.
+ */
+@Entity({ tableName: 'machine_catalog_service_type_parts' })
+@Index({ name: 'mcat_stp_service_type_idx', properties: ['machineServiceTypeId'] })
+export class MachineCatalogServiceTypePart {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  // FK → machine_catalog_service_types.id — FK ID only
+  @Property({ name: 'machine_service_type_id', type: 'uuid' })
+  machineServiceTypeId!: string
+
+  // FK → catalog product — FK ID only
+  @Property({ name: 'catalog_product_id', type: 'uuid' })
+  catalogProductId!: string
+
+  @Property({ name: 'quantity', type: 'decimal', precision: 10, scale: 3 })
+  quantity!: number
+
+  @Property({ name: 'sort_order', type: 'int', default: 0 })
+  sortOrder: number = 0
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
 }
