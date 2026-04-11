@@ -20,6 +20,7 @@ export const resourcesResourceTypeCreateSchema = z.object({
     .regex(/^#([0-9a-fA-F]{6})$/)
     .optional()
     .nullable(),
+  catalogProductId: z.string().uuid().optional().nullable(),
 })
 
 export const resourcesResourceTypeUpdateSchema = z.object({
@@ -33,6 +34,7 @@ export const resourcesResourceTypeUpdateSchema = z.object({
     .regex(/^#([0-9a-fA-F]{6})$/)
     .optional()
     .nullable(),
+  catalogProductId: z.string().uuid().optional().nullable(),
 })
 
 export const resourcesResourceCreateSchema = z.object({
