@@ -7,6 +7,7 @@ import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/b
 import { fetchCrudList, updateCrud, deleteCrud } from '@open-mercato/ui/backend/utils/crud'
 import { pushWithFlash } from '@open-mercato/ui/backend/utils/flash'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import MachineServiceTypes from '../../../components/MachineServiceTypes'
 
 type MachineFormValues = {
   id: string
@@ -156,23 +157,28 @@ export default function EditMachineInstancePage({ params }: { params?: { id?: st
         {err ? (
           <div className="text-red-600 p-4">{err}</div>
         ) : (
-          <CrudForm<MachineFormValues>
-            title={t('machine_instances.edit.title', 'Edit Machine Instance')}
-            backHref="/backend/machine-instances"
-            cancelHref="/backend/machine-instances"
-            submitLabel={t('machine_instances.form.submit.save', 'Save')}
-            fields={fields}
-            groups={groups}
-            initialValues={initial ?? fallback}
-            isLoading={loading}
-            loadingMessage={t('machine_instances.form.loading', 'Loading...')}
-            successRedirect="/backend/machine-instances"
-            onSubmit={async (vals) => { await updateCrud('machine_instances/machines', vals) }}
-            onDelete={async () => {
-              await deleteCrud('machine_instances/machines', String(id))
-              pushWithFlash(router, '/backend/machine-instances', 'Machine instance deleted.', 'success')
-            }}
-          />
+          <>
+            <CrudForm<MachineFormValues>
+              title={t('machine_instances.edit.title', 'Edit Machine Instance')}
+              backHref="/backend/machine-instances"
+              cancelHref="/backend/machine-instances"
+              submitLabel={t('machine_instances.form.submit.save', 'Save')}
+              fields={fields}
+              groups={groups}
+              initialValues={initial ?? fallback}
+              isLoading={loading}
+              loadingMessage={t('machine_instances.form.loading', 'Loading...')}
+              successRedirect="/backend/machine-instances"
+              onSubmit={async (vals) => { await updateCrud('machine_instances/machines', vals) }}
+              onDelete={async () => {
+                await deleteCrud('machine_instances/machines', String(id))
+                pushWithFlash(router, '/backend/machine-instances', 'Machine instance deleted.', 'success')
+              }}
+            />
+            {!loading && initial?.catalogProductId && (
+              <MachineServiceTypes catalogProductId={initial.catalogProductId} />
+            )}
+          </>
         )}
       </PageBody>
     </Page>
