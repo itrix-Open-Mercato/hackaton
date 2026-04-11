@@ -8,7 +8,7 @@ import { ServiceTicket, ServiceTicketPart } from '../data/entities'
 import { partCreateSchema, partUpdateSchema } from '../data/validators'
 import { ensureScope } from './tickets'
 
-const createPartCommand: CommandHandler<Record<string, unknown>, ServiceTicketPart> = {
+export const createPartCommand: CommandHandler<Record<string, unknown>, ServiceTicketPart> = {
   id: 'service_tickets.parts.create',
   isUndoable: false,
   async execute(rawInput, ctx) {
@@ -41,7 +41,7 @@ const createPartCommand: CommandHandler<Record<string, unknown>, ServiceTicketPa
   },
 }
 
-const updatePartCommand: CommandHandler<Record<string, unknown>, ServiceTicketPart> = {
+export const updatePartCommand: CommandHandler<Record<string, unknown>, ServiceTicketPart> = {
   id: 'service_tickets.parts.update',
   isUndoable: false,
   async execute(rawInput, ctx) {
@@ -67,7 +67,10 @@ const updatePartCommand: CommandHandler<Record<string, unknown>, ServiceTicketPa
   },
 }
 
-const deletePartCommand: CommandHandler<{ body?: Record<string, unknown>; query?: Record<string, unknown> }, ServiceTicketPart> = {
+export const deletePartCommand: CommandHandler<
+  { body?: Record<string, unknown>; query?: Record<string, unknown> },
+  ServiceTicketPart
+> = {
   id: 'service_tickets.parts.delete',
   isUndoable: false,
   async execute(input, ctx) {

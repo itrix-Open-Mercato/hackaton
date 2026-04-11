@@ -28,6 +28,7 @@ export const ticketListItemSchema = z
     visit_end_date: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
     customer_entity_id: z.string().nullable().optional(),
+    contact_person_id: z.string().nullable().optional(),
     machine_asset_id: z.string().nullable().optional(),
     order_id: z.string().nullable().optional(),
     created_by_user_id: z.string().nullable().optional(),

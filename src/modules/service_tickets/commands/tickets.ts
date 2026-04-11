@@ -66,7 +66,7 @@ async function generateTicketNumber(em: EntityManager, tenantId: string, organiz
   return `SRV-${next.toString().padStart(6, '0')}`
 }
 
-const createTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket> = {
+export const createTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket> = {
   id: 'service_tickets.tickets.create',
   isUndoable: false,
   async execute(rawInput, ctx) {
@@ -90,6 +90,7 @@ const createTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket
             visitEndDate: parsed.visit_end_date ? new Date(parsed.visit_end_date) : null,
             address: parsed.address ?? null,
             customerEntityId: parsed.customer_entity_id ?? null,
+            contactPersonId: parsed.customer_entity_id ? parsed.contact_person_id ?? null : null,
             machineAssetId: parsed.machine_asset_id ?? null,
             orderId: parsed.order_id ?? null,
             createdByUserId: ctx.auth?.userId ?? null,
@@ -139,7 +140,7 @@ const createTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket
   },
 }
 
-const updateTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket> = {
+export const updateTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket> = {
   id: 'service_tickets.tickets.update',
   isUndoable: false,
   async execute(rawInput, ctx) {
@@ -168,6 +169,10 @@ const updateTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket
         deletedAt: null,
       } as FilterQuery<ServiceTicket>,
       apply: (entity) => {
+        const companyChanged =
+          parsed.customer_entity_id !== undefined &&
+          parsed.customer_entity_id !== entity.customerEntityId
+
         if (parsed.service_type !== undefined) entity.serviceType = parsed.service_type
         if (parsed.status !== undefined) entity.status = parsed.status
         if (parsed.priority !== undefined) entity.priority = parsed.priority
@@ -176,6 +181,11 @@ const updateTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket
         if (parsed.visit_end_date !== undefined) entity.visitEndDate = parsed.visit_end_date ? new Date(parsed.visit_end_date) : null
         if (parsed.address !== undefined) entity.address = parsed.address
         if (parsed.customer_entity_id !== undefined) entity.customerEntityId = parsed.customer_entity_id
+        if (parsed.contact_person_id !== undefined) {
+          entity.contactPersonId = parsed.contact_person_id
+        } else if (companyChanged) {
+          entity.contactPersonId = null
+        }
         if (parsed.machine_asset_id !== undefined) entity.machineAssetId = parsed.machine_asset_id
         if (parsed.order_id !== undefined) entity.orderId = parsed.order_id
       },
@@ -257,7 +267,7 @@ const updateTicketCommand: CommandHandler<Record<string, unknown>, ServiceTicket
   },
 }
 
-const deleteTicketCommand: CommandHandler<{ body?: Record<string, unknown>; query?: Record<string, unknown> }, ServiceTicket> = {
+export const deleteTicketCommand: CommandHandler<{ body?: Record<string, unknown>; query?: Record<string, unknown> }, ServiceTicket> = {
   id: 'service_tickets.tickets.delete',
   isUndoable: false,
   async execute(input, ctx) {
