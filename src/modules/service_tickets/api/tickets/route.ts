@@ -3,8 +3,9 @@ import { makeCrudRoute } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { Where, WhereValue } from '@open-mercato/shared/lib/query/types'
+import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import { ticketCrudEvents, ticketCrudIndexer } from '../../commands/tickets'
-import { ServiceTicket } from '../../data/entities'
+import { ServiceTicket, ServiceTicketAssignment } from '../../data/entities'
 import { ENTITY_TYPE } from '../../lib/constants'
 import type { ServiceTicketListItem } from '../../types'
 import {
@@ -23,10 +24,12 @@ const querySchema = z
     service_type: z.string().optional(),
     priority: z.string().optional(),
     customer_entity_id: z.string().uuid().optional(),
-    machine_asset_id: z.string().uuid().optional(),
+    machine_instance_id: z.string().uuid().optional(),
     search: z.string().optional(),
     visit_date_from: z.string().optional(),
     visit_date_to: z.string().optional(),
+    created_at_from: z.string().optional(),
+    created_at_to: z.string().optional(),
     page: z.coerce.number().min(1).default(1),
     pageSize: z.coerce.number().min(1).max(100).default(50),
     sortField: z.string().optional().default('created_at'),
@@ -38,6 +41,17 @@ const rawBodySchema = z.object({}).passthrough()
 
 type Query = z.infer<typeof querySchema>
 type BaseFields = Record<string, unknown>
+
+function parseDateFilterBoundary(value: string, boundary: 'start' | 'end'): Date {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number)
+    return boundary === 'start'
+      ? new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+      : new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+  }
+
+  return new Date(value)
+}
 
 export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
   metadata: {
@@ -68,9 +82,13 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'visit_date',
       'visit_end_date',
       'address',
+      'latitude',
+      'longitude',
+      'location_source',
+      'geocoded_address',
       'customer_entity_id',
       'contact_person_id',
-      'machine_asset_id',
+      'machine_instance_id',
       'order_id',
       'created_by_user_id',
       'tenant_id',
@@ -96,7 +114,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (q.service_type) F.service_type = { $in: q.service_type.split(',') }
       if (q.priority) F.priority = { $in: q.priority.split(',') }
       if (q.customer_entity_id) F.customer_entity_id = q.customer_entity_id
-      if (q.machine_asset_id) F.machine_asset_id = q.machine_asset_id
+      if (q.machine_instance_id) F.machine_instance_id = q.machine_instance_id
 
       if (q.search) {
         const escaped = escapeLikePattern(q.search)
@@ -108,9 +126,16 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
 
       if (q.visit_date_from || q.visit_date_to) {
         const range: { $gte?: Date; $lte?: Date } = {}
-        if (q.visit_date_from) range.$gte = new Date(q.visit_date_from)
-        if (q.visit_date_to) range.$lte = new Date(q.visit_date_to)
+        if (q.visit_date_from) range.$gte = parseDateFilterBoundary(q.visit_date_from, 'start')
+        if (q.visit_date_to) range.$lte = parseDateFilterBoundary(q.visit_date_to, 'end')
         F.visit_date = range
+      }
+
+      if (q.created_at_from || q.created_at_to) {
+        const range: { $gte?: Date; $lte?: Date } = {}
+        if (q.created_at_from) range.$gte = parseDateFilterBoundary(q.created_at_from, 'start')
+        if (q.created_at_to) range.$lte = parseDateFilterBoundary(q.created_at_to, 'end')
+        F.created_at = range
       }
 
       return filters
@@ -125,6 +150,11 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         return value ? new Date(value as string | number).toISOString() : null
       }
 
+      const numOrNull = (camel: string, snake: string): number | null => {
+        const v = source[camel] ?? source[snake]
+        return v != null ? Number(v) : null
+      }
+
       return {
         id: str('id', 'id'),
         ticketNumber: str('ticketNumber', 'ticket_number'),
@@ -135,14 +165,49 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         visitDate: date('visitDate', 'visit_date'),
         visitEndDate: date('visitEndDate', 'visit_end_date'),
         address: nullable('address', 'address'),
+        latitude: numOrNull('latitude', 'latitude'),
+        longitude: numOrNull('longitude', 'longitude'),
+        locationSource: (source.locationSource ?? source.location_source ?? null) as 'geocoded' | 'manual' | null,
+        geocodedAddress: nullable('geocodedAddress', 'geocoded_address'),
         customerEntityId: nullable('customerEntityId', 'customer_entity_id'),
         contactPersonId: nullable('contactPersonId', 'contact_person_id'),
-        machineAssetId: nullable('machineAssetId', 'machine_asset_id'),
+        machineInstanceId: nullable('machineInstanceId', 'machine_instance_id'),
         orderId: nullable('orderId', 'order_id'),
         createdByUserId: nullable('createdByUserId', 'created_by_user_id'),
         tenantId: (source.tenantId ?? source.tenant_id ?? '') as string,
         organizationId: (source.organizationId ?? source.organization_id ?? '') as string,
         createdAt: date('createdAt', 'created_at'),
+      }
+    },
+  },
+  hooks: {
+    afterList: async (payload: unknown, ctx: any) => {
+      const items = Array.isArray((payload as { items?: unknown[] })?.items)
+        ? ((payload as { items: ServiceTicketListItem[] }).items)
+        : []
+      if (!items.length) return
+
+      const em = ctx.container.resolve('em') as EntityManager
+      const assignments = await em.find(
+        ServiceTicketAssignment,
+        {
+          ticket: { id: { $in: items.map((item) => item.id) } },
+          tenantId: ctx.auth?.tenantId ?? undefined,
+          organizationId: ctx.selectedOrganizationId ?? ctx.auth?.orgId ?? undefined,
+        } as FilterQuery<ServiceTicketAssignment>,
+      )
+
+      const staffIdsByTicket = new Map<string, string[]>()
+      for (const assignment of assignments) {
+        const ticketId = typeof assignment.ticket === 'string' ? assignment.ticket : assignment.ticket?.id
+        if (!ticketId) continue
+        const next = staffIdsByTicket.get(ticketId) ?? []
+        next.push(assignment.staffMemberId)
+        staffIdsByTicket.set(ticketId, next)
+      }
+
+      for (const item of items) {
+        item.staffMemberIds = staffIdsByTicket.get(item.id) ?? []
       }
     },
   },

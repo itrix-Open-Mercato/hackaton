@@ -11,7 +11,11 @@ const mockMakeCrudRoute = jest.fn((config: unknown) => ({
 
 jest.mock('@open-mercato/shared/lib/crud/factory', () => ({
   makeCrudRoute: (config: unknown) => mockMakeCrudRoute(config),
-}))
+}), { virtual: true })
+
+jest.mock('@open-mercato/shared/lib/db/escapeLikePattern', () => ({
+  escapeLikePattern: (value: string) => value.replaceAll('%', '\\%').replaceAll('_', '\\_'),
+}), { virtual: true })
 
 jest.mock('../../commands/tickets', () => ({
   ticketCrudEvents: {
@@ -72,19 +76,22 @@ describe('service tickets route', () => {
     expect(openApi).toBeDefined()
   })
 
-  it('builds ticket filters for enum filters, escaped search, and visit date ranges', async () => {
+  it('builds ticket filters for enum filters, escaped search, and datetime ranges', async () => {
     const config = getRouteConfig()
 
     const filters = await config.list.buildFilters({
+      id: 'ticket-0',
       ids: 'ticket-1,ticket-2',
       status: 'scheduled,completed',
       service_type: 'maintenance,warranty_claim',
       priority: 'urgent,critical',
       customer_entity_id: 'customer-1',
-      machine_asset_id: 'machine-1',
+      machine_instance_id: 'machine-1',
       search: '50%_off',
       visit_date_from: '2026-04-10T09:00:00.000Z',
       visit_date_to: '2026-04-11T17:30:00.000Z',
+      created_at_from: '2026-04-01T08:15:00.000Z',
+      created_at_to: '2026-04-30T18:45:00.000Z',
     })
 
     expect(filters).toMatchObject({
@@ -93,7 +100,7 @@ describe('service tickets route', () => {
       service_type: { $in: ['maintenance', 'warranty_claim'] },
       priority: { $in: ['urgent', 'critical'] },
       customer_entity_id: 'customer-1',
-      machine_asset_id: 'machine-1',
+      machine_instance_id: 'machine-1',
       $or: [
         { ticket_number: { $ilike: '%50\\%\\_off%' } },
         { description: { $ilike: '%50\\%\\_off%' } },
@@ -103,6 +110,44 @@ describe('service tickets route', () => {
     expect(filters.visit_date).toEqual({
       $gte: new Date('2026-04-10T09:00:00.000Z'),
       $lte: new Date('2026-04-11T17:30:00.000Z'),
+    })
+
+    expect(filters.created_at).toEqual({
+      $gte: new Date('2026-04-01T08:15:00.000Z'),
+      $lte: new Date('2026-04-30T18:45:00.000Z'),
+    })
+  })
+
+  it('treats date-only ranges as full inclusive calendar days', async () => {
+    const config = getRouteConfig()
+
+    const filters = await config.list.buildFilters({
+      visit_date_from: '2026-04-10',
+      visit_date_to: '2026-04-11',
+      created_at_from: '2026-04-01',
+      created_at_to: '2026-04-30',
+    })
+
+    expect(filters.visit_date).toEqual({
+      $gte: new Date('2026-04-10T00:00:00.000Z'),
+      $lte: new Date('2026-04-11T23:59:59.999Z'),
+    })
+
+    expect(filters.created_at).toEqual({
+      $gte: new Date('2026-04-01T00:00:00.000Z'),
+      $lte: new Date('2026-04-30T23:59:59.999Z'),
+    })
+  })
+
+  it('supports filtering by a singular id query parameter', async () => {
+    const config = getRouteConfig()
+
+    await expect(
+      config.list.buildFilters({
+        id: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).resolves.toMatchObject({
+      id: '11111111-1111-4111-8111-111111111111',
     })
   })
 
@@ -121,7 +166,7 @@ describe('service tickets route', () => {
       address: 'Dock 7',
       customer_entity_id: 'customer-1',
       contact_person_id: 'person-1',
-      machine_asset_id: 'machine-1',
+      machine_instance_id: 'machine-1',
       order_id: 'order-1',
       created_by_user_id: 'user-1',
       tenant_id: 'tenant-1',
@@ -139,9 +184,13 @@ describe('service tickets route', () => {
       visitDate: '2026-04-11T09:00:00.000Z',
       visitEndDate: '2026-04-11T12:00:00.000Z',
       address: 'Dock 7',
+      latitude: null,
+      longitude: null,
+      locationSource: null,
+      geocodedAddress: null,
       customerEntityId: 'customer-1',
       contactPersonId: 'person-1',
-      machineAssetId: 'machine-1',
+      machineInstanceId: 'machine-1',
       orderId: 'order-1',
       createdByUserId: 'user-1',
       tenantId: 'tenant-1',
@@ -161,7 +210,7 @@ describe('service tickets route', () => {
       address: null,
       customerEntityId: null,
       contactPersonId: null,
-      machineAssetId: null,
+      machineInstanceId: null,
       orderId: null,
       createdByUserId: null,
       tenantId: 'tenant-2',
@@ -179,9 +228,13 @@ describe('service tickets route', () => {
       visitDate: '2026-04-12T07:00:00.000Z',
       visitEndDate: null,
       address: null,
+      latitude: null,
+      longitude: null,
+      locationSource: null,
+      geocodedAddress: null,
       customerEntityId: null,
       contactPersonId: null,
-      machineAssetId: null,
+      machineInstanceId: null,
       orderId: null,
       createdByUserId: null,
       tenantId: 'tenant-2',

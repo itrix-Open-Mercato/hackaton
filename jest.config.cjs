@@ -10,6 +10,12 @@ module.exports = {
     '^@open-mercato/shared/(.*)$': '<rootDir>/../open-mercato/packages/shared/src/$1',
     '^@open-mercato/ui/(.*)$': '<rootDir>/../open-mercato/packages/ui/src/$1',
     '^#generated/(.*)$': '<rootDir>/../open-mercato/packages/core/generated/$1',
+    '^@mikro-orm/core$': '<rootDir>/node_modules/@mikro-orm/core',
+    '^@mikro-orm/postgresql$': '<rootDir>/node_modules/@mikro-orm/postgresql',
+    '^react$': '<rootDir>/node_modules/react',
+    '^react/jsx-runtime$': '<rootDir>/node_modules/react/jsx-runtime',
+    '^react-dom$': '<rootDir>/node_modules/react-dom',
+    '^zod$': '<rootDir>/node_modules/zod',
   },
   transform: {
     '^.+\\.(t|j)sx?$': [

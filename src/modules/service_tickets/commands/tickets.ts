@@ -13,8 +13,30 @@ import { ServiceTicket, ServiceTicketAssignment, ServiceTicketDateChange } from 
 import { ticketCreateSchema, ticketUpdateSchema } from '../data/validators'
 import { emitServiceTicketEvent } from '../events'
 import { ENTITY_TYPE } from '../lib/constants'
+import { GoogleGeocodingAdapter } from '../lib/geocoding'
+
+// Module-level singleton — one instance per process, no DI overhead needed.
+const geocodingAdapter = new GoogleGeocodingAdapter()
 
 const MAX_TICKET_NUMBER_RETRIES = 3
+
+export async function validateContactPersonBelongsToCompany(
+  contactPersonId: string,
+  customerEntityId: string,
+  em: EntityManager,
+): Promise<void> {
+  const knex = (em as any).getConnection().getKnex()
+  const rows = await knex('customer_people')
+    .select('entity_id')
+    .where({ company_entity_id: customerEntityId, entity_id: contactPersonId })
+    .limit(1)
+  if (!rows.length) {
+    throw new CrudHttpError(422, {
+      error: 'Contact person does not belong to the selected company',
+      field: 'contact_person_id',
+    })
+  }
+}
 
 export const ticketCrudEvents: CrudEventsConfig<ServiceTicket> = {
   module: 'service_tickets',
@@ -75,6 +97,15 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
     const de = ctx.container.resolve('dataEngine') as DataEngine
     const em = ctx.container.resolve('em') as EntityManager
 
+    if (parsed.contact_person_id && parsed.customer_entity_id) {
+      await validateContactPersonBelongsToCompany(parsed.contact_person_id, parsed.customer_entity_id, em)
+    } else if (parsed.contact_person_id && !parsed.customer_entity_id) {
+      throw new CrudHttpError(422, {
+        error: 'Contact person requires a company to be selected',
+        field: 'contact_person_id',
+      })
+    }
+
     let ticket: ServiceTicket | null = null
     for (let attempt = 0; attempt < MAX_TICKET_NUMBER_RETRIES; attempt++) {
       const ticketNumber = await generateTicketNumber(em, scope.tenantId, scope.organizationId)
@@ -91,7 +122,7 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
             address: parsed.address ?? null,
             customerEntityId: parsed.customer_entity_id ?? null,
             contactPersonId: parsed.customer_entity_id ? parsed.contact_person_id ?? null : null,
-            machineAssetId: parsed.machine_asset_id ?? null,
+            machineInstanceId: parsed.machine_instance_id ?? null,
             orderId: parsed.order_id ?? null,
             createdByUserId: ctx.auth?.userId ?? null,
             tenantId: scope.tenantId,
@@ -108,6 +139,40 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
       }
     }
     if (!ticket) throw new CrudHttpError(500, { error: 'Failed to generate ticket number' })
+
+    // Geocode the address if provided and no manual coordinates were supplied
+    if (parsed.address && parsed.latitude == null && parsed.longitude == null) {
+      const geo = await geocodingAdapter.geocode(parsed.address)
+      if (geo) {
+        await de.updateOrmEntity({
+          entity: ServiceTicket,
+          where: { id: ticket.id } as import('@mikro-orm/postgresql').FilterQuery<ServiceTicket>,
+          apply: (e) => {
+            e.latitude = geo.latitude
+            e.longitude = geo.longitude
+            e.locationSource = 'geocoded'
+            e.geocodedAddress = geo.normalizedAddress
+            e.locationUpdatedAt = new Date()
+          },
+        })
+        ticket.latitude = geo.latitude
+        ticket.longitude = geo.longitude
+        ticket.locationSource = 'geocoded'
+        ticket.geocodedAddress = geo.normalizedAddress
+        ticket.locationUpdatedAt = new Date()
+      }
+    } else if (parsed.latitude != null && parsed.longitude != null) {
+      await de.updateOrmEntity({
+        entity: ServiceTicket,
+        where: { id: ticket.id } as import('@mikro-orm/postgresql').FilterQuery<ServiceTicket>,
+        apply: (e) => {
+          e.latitude = parsed.latitude!
+          e.longitude = parsed.longitude!
+          e.locationSource = parsed.location_source ?? 'manual'
+          e.locationUpdatedAt = new Date()
+        },
+      })
+    }
 
     if (parsed.staff_member_ids?.length) {
       for (const staffMemberId of parsed.staff_member_ids) {
@@ -157,8 +222,30 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
     } as FilterQuery<ServiceTicket>)
     if (!existing) throw new CrudHttpError(404, { error: 'Service ticket not found' })
 
+    const companyChanging =
+      parsed.customer_entity_id !== undefined &&
+      parsed.customer_entity_id !== existing.customerEntityId
+    const effectiveCompanyId = parsed.customer_entity_id !== undefined ? parsed.customer_entity_id : existing.customerEntityId
+    // When company changes without an explicit contact_person_id, the apply function will
+    // clear the contact person — skip validation in that case.
+    const effectivePersonId = parsed.contact_person_id !== undefined
+      ? parsed.contact_person_id
+      : (companyChanging ? null : existing.contactPersonId)
+    if (effectivePersonId && effectiveCompanyId) {
+      await validateContactPersonBelongsToCompany(effectivePersonId, effectiveCompanyId, em)
+    } else if (effectivePersonId && !effectiveCompanyId) {
+      throw new CrudHttpError(422, {
+        error: 'Contact person requires a company to be selected',
+        field: 'contact_person_id',
+      })
+    }
+
     const oldVisitDate = existing.visitDate
     const oldStatus = existing.status
+
+    const addressChanged =
+      parsed.address !== undefined && parsed.address !== existing.address
+    const manualCoordsProvided = parsed.latitude != null && parsed.longitude != null
 
     const ticket = await de.updateOrmEntity({
       entity: ServiceTicket,
@@ -186,11 +273,51 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
         } else if (companyChanged) {
           entity.contactPersonId = null
         }
-        if (parsed.machine_asset_id !== undefined) entity.machineAssetId = parsed.machine_asset_id
+        if (parsed.machine_instance_id !== undefined) entity.machineInstanceId = parsed.machine_instance_id
         if (parsed.order_id !== undefined) entity.orderId = parsed.order_id
+
+        // Clear location when address is explicitly nulled
+        if (parsed.address === null) {
+          entity.latitude = null
+          entity.longitude = null
+          entity.locationSource = null
+          entity.geocodedAddress = null
+          entity.locationUpdatedAt = null
+        }
+
+        // Apply manual coordinate override
+        if (manualCoordsProvided) {
+          entity.latitude = parsed.latitude!
+          entity.longitude = parsed.longitude!
+          entity.locationSource = parsed.location_source ?? 'manual'
+          entity.locationUpdatedAt = new Date()
+        }
       },
     })
     if (!ticket) throw new CrudHttpError(404, { error: 'Service ticket not found' })
+
+    // Re-geocode when address changed and no manual coordinates provided
+    if (addressChanged && !manualCoordsProvided && parsed.address) {
+      const geo = await geocodingAdapter.geocode(parsed.address)
+      if (geo) {
+        await de.updateOrmEntity({
+          entity: ServiceTicket,
+          where: { id: parsed.id } as FilterQuery<ServiceTicket>,
+          apply: (e) => {
+            e.latitude = geo.latitude
+            e.longitude = geo.longitude
+            e.locationSource = 'geocoded'
+            e.geocodedAddress = geo.normalizedAddress
+            e.locationUpdatedAt = new Date()
+          },
+        })
+        ticket.latitude = geo.latitude
+        ticket.longitude = geo.longitude
+        ticket.locationSource = 'geocoded'
+        ticket.geocodedAddress = geo.normalizedAddress
+        ticket.locationUpdatedAt = new Date()
+      }
+    }
 
     const dateChanged = String(oldVisitDate ?? '') !== String(ticket.visitDate ?? '')
     if (dateChanged) {

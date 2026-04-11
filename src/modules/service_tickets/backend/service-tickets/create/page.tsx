@@ -7,6 +7,7 @@ import { createCrud } from '@open-mercato/ui/backend/utils/crud'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { buildTicketFields, buildTicketGroups, createEmptyTicketFormValues, type TicketFormValues } from '../../../components/ticketFormConfig'
+import { ENTITY_TYPE } from '../../../lib/constants'
 
 export default function CreateServiceTicketPage() {
   const t = useT()
@@ -45,6 +46,7 @@ export default function CreateServiceTicketPage() {
         <CrudForm<TicketFormValues>
           title={t('service_tickets.form.create.title')}
           backHref="/backend/service-tickets"
+          entityIds={[ENTITY_TYPE]}
           fields={fields}
           groups={groups}
           initialValues={initialValues}

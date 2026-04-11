@@ -14,7 +14,7 @@ import type { ServiceType, TicketStatus, TicketPriority } from '../lib/constants
 @Index({ name: 'st_status_tenant_org_idx', properties: ['status', 'tenantId', 'organizationId'] })
 @Index({ name: 'st_customer_idx', properties: ['customerEntityId'] })
 @Index({ name: 'st_contact_person_idx', properties: ['contactPersonId'] })
-@Index({ name: 'st_machine_idx', properties: ['machineAssetId'] })
+@Index({ name: 'st_machine_idx', properties: ['machineInstanceId'] })
 @Unique({ name: 'st_ticket_number_unique', properties: ['ticketNumber', 'tenantId', 'organizationId'] })
 export class ServiceTicket {
   [OptionalProps]?: 'status' | 'priority' | 'createdAt' | 'updatedAt' | 'deletedAt'
@@ -52,14 +52,29 @@ export class ServiceTicket {
   @Property({ type: 'text', nullable: true })
   address?: string | null
 
+  @Property({ type: 'float8', nullable: true })
+  latitude?: number | null
+
+  @Property({ type: 'float8', nullable: true })
+  longitude?: number | null
+
+  @Property({ name: 'location_source', type: 'text', nullable: true })
+  locationSource?: 'geocoded' | 'manual' | null
+
+  @Property({ name: 'geocoded_address', type: 'text', nullable: true })
+  geocodedAddress?: string | null
+
+  @Property({ name: 'location_updated_at', type: Date, nullable: true })
+  locationUpdatedAt?: Date | null
+
   @Property({ name: 'customer_entity_id', type: 'uuid', nullable: true })
   customerEntityId?: string | null
 
   @Property({ name: 'contact_person_id', type: 'uuid', nullable: true })
   contactPersonId?: string | null
 
-  @Property({ name: 'machine_asset_id', type: 'uuid', nullable: true })
-  machineAssetId?: string | null
+  @Property({ name: 'machine_instance_id', type: 'uuid', nullable: true })
+  machineInstanceId?: string | null
 
   @Property({ name: 'order_id', type: 'uuid', nullable: true })
   orderId?: string | null

@@ -3,9 +3,8 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
-import type { FilterValues } from '@open-mercato/ui/backend/FilterBar'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { EnumBadge, type EnumBadgeMap } from '@open-mercato/ui/backend/ValueIcons'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -15,6 +14,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { ServiceTicketListItem } from '../types'
+import { searchCompanies } from './customerOptions'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
@@ -23,6 +23,7 @@ import {
   STATUS_I18N_KEYS,
   STATUS_VALUES,
 } from '../lib/constants'
+import type { TicketFilters } from './useTicketFilters'
 
 type TicketsResponse = {
   items: ServiceTicketListItem[]
@@ -68,6 +69,17 @@ function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListIt
   return [
     { accessorKey: 'ticketNumber', header: t('service_tickets.table.column.ticketNumber'), meta: { priority: 1 } },
     {
+      id: 'companyName',
+      header: t('service_tickets.table.column.companyName'),
+      meta: { priority: 2 },
+      accessorFn: (row) => row._service_tickets?.companyName ?? null,
+      cell: ({ getValue }) => {
+        const value = getValue() as string | null
+        if (!value) return <span className="text-muted-foreground">—</span>
+        return value
+      },
+    },
+    {
       accessorKey: 'serviceType',
       header: t('service_tickets.table.column.serviceType'),
       meta: { priority: 2 },
@@ -108,58 +120,22 @@ function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListIt
   ]
 }
 
-export default function ServiceTicketsTable() {
+export default function ServiceTicketsTable({ filters }: { filters: TicketFilters }) {
   const t = useT()
   const router = useRouter()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
-  const [search, setSearch] = React.useState('')
-  const [values, setValues] = React.useState<FilterValues>({})
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'createdAt', desc: true }])
-  const [page, setPage] = React.useState(1)
   const scopeVersion = useOrganizationScopeVersion()
 
-  const queryParams = React.useMemo(() => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: '50',
-      sortField: sorting[0]?.id || 'createdAt',
-      sortDir: sorting[0]?.desc ? 'desc' : 'asc',
-    })
-
-    if (search) params.set('search', search)
-
-    Object.entries(values).forEach(([key, value]) => {
-      if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return
-
-      if (Array.isArray(value)) {
-        params.set(key, value.map(String).join(','))
-      } else {
-        params.set(key, String(value))
-      }
-    })
-
-    return params.toString()
-  }, [page, search, sorting, values])
+  const { search, setSearch, values, setValues, sorting, page, setPage, handleReset, handleSortingChange, tableParams } = filters
 
   const columns = React.useMemo(() => buildColumns(t), [t])
 
   const { data: ticketsData, isLoading, error } = useQuery<TicketsResponse>({
-    queryKey: ['service_tickets', queryParams, scopeVersion],
+    queryKey: ['service_tickets', tableParams, scopeVersion],
     queryFn: async () =>
-      fetchCrudList<ServiceTicketListItem>('service_tickets/tickets', Object.fromEntries(new URLSearchParams(queryParams))),
+      fetchCrudList<ServiceTicketListItem>('service_tickets/tickets', Object.fromEntries(new URLSearchParams(tableParams))),
   })
-
-  const handleSortingChange = (newSorting: SortingState) => {
-    setSorting(newSorting)
-    setPage(1)
-  }
-
-  const handleReset = () => {
-    setSearch('')
-    setValues({})
-    setPage(1)
-  }
 
   if (error) {
     return <div className="text-sm text-destructive">{t('service_tickets.table.error.generic')}</div>
@@ -204,9 +180,31 @@ export default function ServiceTicketsTable() {
             multiple: true,
             options: PRIORITY_VALUES.map((value) => ({ value, label: t(PRIORITY_I18N_KEYS[value]) })),
           },
+          {
+            id: 'visit_date',
+            label: t('service_tickets.table.filters.visitDate'),
+            type: 'dateRange',
+          },
+          {
+            id: 'created_at',
+            label: t('service_tickets.table.filters.createdAt'),
+            type: 'dateRange',
+          },
+          {
+            id: 'customer_entity_id',
+            label: t('service_tickets.table.filters.company'),
+            type: 'combobox',
+            loadOptions: async (query?: string) => {
+              try {
+                return await searchCompanies(query ?? '')
+              } catch {
+                return []
+              }
+            },
+          },
         ]}
         filterValues={values}
-        onFiltersApply={(nextValues: FilterValues) => {
+        onFiltersApply={(nextValues) => {
           setValues(nextValues)
           setPage(1)
         }}

@@ -30,6 +30,8 @@ export const enabledModules: ModuleEntry[] = [
   { id: 'currencies', from: '@open-mercato/core' },
   { id: 'planner', from: '@open-mercato/core' },
   { id: 'resources', from: '@app' },
+  { id: 'machine_instances', from: '@app' },
+  { id: 'machine_catalog', from: '@app' },
   { id: 'staff', from: '@open-mercato/core' },
   { id: 'events', from: '@open-mercato/events' },
   { id: 'notifications', from: '@open-mercato/core' },
@@ -51,6 +53,7 @@ export const enabledModules: ModuleEntry[] = [
   { id: 'portal', from: '@open-mercato/core' },
   { id: 'phone_calls', from: '@app' },
   { id: 'service_tickets', from: '@app' },
+  { id: 'technicians', from: '@app' },
   { id: 'example', from: '@app' },
 ]
 

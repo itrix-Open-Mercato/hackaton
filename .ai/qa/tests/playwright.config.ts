@@ -17,6 +17,7 @@ const discoveredSpecs = discoverIntegrationSpecFiles(projectRoot, path.join(proj
 const discoveredSpecPaths = discoveredSpecs.map((entry) => entry.path);
 
 export default defineConfig({
+  globalSetup: path.join(__dirname, 'global-setup.ts'),
   testDir: projectRoot,
   testMatch: discoveredSpecPaths.length > 0 ? discoveredSpecPaths : ['.ai/qa/tests/__no_tests__/*.spec.ts'],
   testIgnore: [
@@ -33,6 +34,8 @@ export default defineConfig({
     headless: true,
     screenshot: captureScreenshots ? 'on' : 'only-on-failure',
     trace: 'on-first-retry',
+    // Reuse the admin session saved by global-setup — no per-test login needed
+    storageState: path.join(projectRoot, '.ai', 'qa', '.auth', 'state.json'),
   },
   reporter: isGitHubActions
     ? [
