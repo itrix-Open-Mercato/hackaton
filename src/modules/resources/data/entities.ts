@@ -24,6 +24,10 @@ export class ResourcesResourceType {
   @Property({ name: 'appearance_color', type: 'text', nullable: true })
   appearanceColor?: string | null
 
+  // Link to catalog product — FK ID only, no ORM relation
+  @Property({ name: 'catalog_product_id', type: 'uuid', nullable: true })
+  catalogProductId?: string | null
+
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 
