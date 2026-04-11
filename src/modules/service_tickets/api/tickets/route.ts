@@ -23,7 +23,7 @@ const querySchema = z
     service_type: z.string().optional(),
     priority: z.string().optional(),
     customer_entity_id: z.string().uuid().optional(),
-    machine_asset_id: z.string().uuid().optional(),
+    machine_instance_id: z.string().uuid().optional(),
     search: z.string().optional(),
     visit_date_from: z.string().optional(),
     visit_date_to: z.string().optional(),
@@ -70,7 +70,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'address',
       'customer_entity_id',
       'contact_person_id',
-      'machine_asset_id',
+      'machine_instance_id',
       'order_id',
       'created_by_user_id',
       'tenant_id',
@@ -96,7 +96,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (q.service_type) F.service_type = { $in: q.service_type.split(',') }
       if (q.priority) F.priority = { $in: q.priority.split(',') }
       if (q.customer_entity_id) F.customer_entity_id = q.customer_entity_id
-      if (q.machine_asset_id) F.machine_asset_id = q.machine_asset_id
+      if (q.machine_instance_id) F.machine_instance_id = q.machine_instance_id
 
       if (q.search) {
         const escaped = escapeLikePattern(q.search)
@@ -137,7 +137,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         address: nullable('address', 'address'),
         customerEntityId: nullable('customerEntityId', 'customer_entity_id'),
         contactPersonId: nullable('contactPersonId', 'contact_person_id'),
-        machineAssetId: nullable('machineAssetId', 'machine_asset_id'),
+        machineInstanceId: nullable('machineInstanceId', 'machine_instance_id'),
         orderId: nullable('orderId', 'order_id'),
         createdByUserId: nullable('createdByUserId', 'created_by_user_id'),
         tenantId: (source.tenantId ?? source.tenant_id ?? '') as string,

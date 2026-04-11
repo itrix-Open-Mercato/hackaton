@@ -13,12 +13,25 @@ const PERSON_ID_OTHER = '55555555-5555-4555-8555-555555555555'
 
 jest.mock('@open-mercato/shared/lib/commands', () => ({
   registerCommand: (...args: unknown[]) => mockRegisterCommand(...args),
-}))
+}), { virtual: true })
 
 jest.mock('@open-mercato/shared/lib/commands/helpers', () => ({
   emitCrudSideEffects: (...args: unknown[]) => mockEmitCrudSideEffects(...args),
   requireId: (...args: unknown[]) => mockRequireId(...args),
-}))
+}), { virtual: true })
+
+jest.mock('@open-mercato/shared/lib/crud/errors', () => ({
+  CrudHttpError: class CrudHttpError extends Error {
+    status: number
+    payload: unknown
+
+    constructor(status: number, payload: unknown) {
+      super(typeof payload === 'object' && payload !== null && 'error' in payload ? String((payload as { error?: unknown }).error) : 'CrudHttpError')
+      this.status = status
+      this.payload = payload
+    }
+  },
+}), { virtual: true })
 
 jest.mock('../../events', () => ({
   emitServiceTicketEvent: (...args: unknown[]) => mockEmitServiceTicketEvent(...args),
@@ -112,6 +125,7 @@ describe('service_tickets ticket commands', () => {
           ticketNumber: 'SRV-000010',
           customerEntityId: COMPANY_ID_A,
           contactPersonId: PERSON_ID,
+          machineInstanceId: null,
           tenantId: 'tenant-1',
           organizationId: 'org-1',
         }),

@@ -10,7 +10,7 @@ export type ServiceTicketListItem = {
   address?: string | null
   customerEntityId?: string | null
   contactPersonId?: string | null
-  machineAssetId?: string | null
+  machineInstanceId?: string | null
   orderId?: string | null
   createdByUserId?: string | null
   tenantId?: string
