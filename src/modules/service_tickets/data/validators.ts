@@ -59,6 +59,7 @@ export const ticketCreateSchema = z.object({
   machine_instance_id: optionalUuid,
   order_id: optionalUuid,
   staff_member_ids: staffMemberIdsSchema,
+  machine_service_type_ids: z.array(z.string().uuid()).optional(),
 })
 
 export type TicketCreateInput = z.infer<typeof ticketCreateSchema>
@@ -80,6 +81,7 @@ export const ticketUpdateSchema = z.object({
   machine_instance_id: nullableUuid,
   order_id: nullableUuid,
   staff_member_ids: staffMemberIdsSchema,
+  machine_service_type_ids: z.array(z.string().uuid()).optional(),
 })
 
 export type TicketUpdateInput = z.infer<typeof ticketUpdateSchema>
