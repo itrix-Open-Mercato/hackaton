@@ -204,6 +204,7 @@ import type { ApiInterceptor } from '@open-mercato/shared/lib/crud/api-intercept
 
 - NO direct ORM relationships between modules — use foreign key IDs
 - Always filter by `organization_id` for tenant-scoped entities
+- Command update/delete handlers MUST filter `em.findOne()` by `tenantId` + `organizationId` — `makeCrudRoute` only auto-scopes list queries and create payloads, not mutations
 - Validate all inputs with Zod; derive types via `z.infer`
 - Use DI (Awilix) for services; avoid `new`-ing directly
 - No `any` types — use Zod schemas with `z.infer`, narrow with runtime checks
@@ -257,7 +258,7 @@ From `reviews/agents-against-main-2026-04-11.md`:
 
 | # | Priority | Issue | File |
 |---|----------|-------|------|
-| 1 | P1 | Missing DB migration for service_tickets entities | `data/entities.ts` — run `yarn mercato db generate` |
+| 1 | ~~P1~~ | ~~Missing DB migration for service_tickets entities~~ | Fixed — manual migration written (`migrations/Migration20260411092949_service_tickets.ts`) |
 | 2 | P1 | UTC timestamps fed into `datetime-local` inputs — timezone shift on save | `components/ticketFormConfig.tsx:159-160` |
 | 3 | P1 | Duplicate staff IDs accepted → partial writes + 500 | `data/validators.ts:26` |
 | 4 | P2 | OpenAPI schema uses snake_case but API returns camelCase | `api/openapi.ts:22-23` |

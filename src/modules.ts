@@ -52,6 +52,7 @@ export const enabledModules: ModuleEntry[] = [
   { id: 'customer_accounts', from: '@open-mercato/core' },
   { id: 'portal', from: '@open-mercato/core' },
   { id: 'service_tickets', from: '@app' },
+  { id: 'technicians', from: '@app' },
   { id: 'example', from: '@app' },
 ]
 
