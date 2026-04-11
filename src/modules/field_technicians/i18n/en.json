@@ -91,6 +91,7 @@
       "tabs": {
         "overview": "Overview",
         "certifications": "Certifications & Permissions",
+        "availability": "Availability",
         "edit": "Edit profile"
       },
       "section": {
@@ -166,6 +167,26 @@
         "issuedBy": "Issued by"
       },
       "confirm": { "delete": "Remove certification?" }
+    },
+    "availability": {
+      "heading": "Availability Calendar",
+      "hint": "Click a day to cycle through: work day → trip → unavailable → holiday → clear",
+      "dayType": {
+        "work_day": "Work day",
+        "trip": "Trip / delegation",
+        "unavailable": "Unavailable",
+        "holiday": "Holiday / day off",
+        "none": "No marking"
+      },
+      "weekday": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
     },
     "audit": {
       "create": "Create technician",

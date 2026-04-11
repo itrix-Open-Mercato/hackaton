@@ -91,6 +91,7 @@
       "tabs": {
         "overview": "Przegląd",
         "certifications": "Uprawnienia i certyfikaty",
+        "availability": "Dostępność",
         "edit": "Edytuj profil"
       },
       "section": {
@@ -166,6 +167,26 @@
         "issuedBy": "Wystawca"
       },
       "confirm": { "delete": "Usunąć uprawnienie?" }
+    },
+    "availability": {
+      "heading": "Kalendarz dostępności",
+      "hint": "Kliknij dzień, aby zmienić oznaczenie: dzień pracy → wyjazd → niedostępny → urlop/święto → usuń",
+      "dayType": {
+        "work_day": "Dzień pracy",
+        "trip": "Wyjazd / delegacja",
+        "unavailable": "Niedostępny",
+        "holiday": "Urlop / święto",
+        "none": "Brak oznaczenia"
+      },
+      "weekday": {
+        "mon": "Pn",
+        "tue": "Wt",
+        "wed": "Śr",
+        "thu": "Cz",
+        "fri": "Pt",
+        "sat": "So",
+        "sun": "Nd"
+      }
     },
     "audit": {
       "create": "Utwórz serwisanta",

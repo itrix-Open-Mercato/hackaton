@@ -67,6 +67,44 @@ export class FieldTechnician {
   deletedAt?: Date | null
 }
 
+export type FieldTechnicianAvailabilityDayType = 'work_day' | 'trip' | 'unavailable' | 'holiday'
+
+@Entity({ tableName: 'field_technician_availability' })
+@Index({ name: 'field_technician_avail_technician_idx', properties: ['technicianId'] })
+@Index({ name: 'field_technician_avail_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'field_technician_avail_date_idx', properties: ['tenantId', 'organizationId', 'technicianId', 'date'] })
+export class FieldTechnicianAvailability {
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'technician_id', type: 'uuid' })
+  technicianId!: string
+
+  @Property({ name: 'date', type: 'date' })
+  date!: string
+
+  @Property({ name: 'day_type', type: 'text', default: 'work_day' })
+  dayType: FieldTechnicianAvailabilityDayType = 'work_day'
+
+  @Property({ type: 'text', nullable: true })
+  notes?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+
+  @Property({ name: 'deleted_at', type: Date, nullable: true })
+  deletedAt?: Date | null
+}
+
 @Entity({ tableName: 'field_technician_certifications' })
 @Index({ name: 'field_technician_certs_technician_idx', properties: ['technicianId'] })
 @Index({ name: 'field_technician_certs_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
