@@ -55,6 +55,7 @@ export const enabledModules: ModuleEntry[] = [
   { id: 'technicians', from: '@app' },
   { id: 'example', from: '@app' },
   { id: 'field_technicians', from: '@app' },
+  { id: 'technician_schedule', from: '@app' },
 ]
 
 const enterpriseModulesEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES, false)

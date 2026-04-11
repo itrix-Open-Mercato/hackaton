@@ -63,7 +63,7 @@ services:
       meilisearch:
         condition: service_healthy
     networks:
-      - mercato-network-fullapp
+      - mercato-network
 
   postgres:
     image: pgvector/pgvector:pg17-trixie
@@ -80,7 +80,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - mercato-network-fullapp
+      - mercato-network
 
   redis:
     image: redis:7-alpine
@@ -92,7 +92,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - mercato-network-fullapp
+      - mercato-network
 
   meilisearch:
     image: getmeili/meilisearch:v1.11
@@ -109,7 +109,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - mercato-network-fullapp
+      - mercato-network
 
 volumes:
   postgres_data:
@@ -121,5 +121,5 @@ volumes:
   app_next:
 
 networks:
-  mercato-network-fullapp:
+  mercato-network:
     driver: bridge
