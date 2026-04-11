@@ -1,6 +1,7 @@
 "use client"
 
-import type { CrudField, CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
+import * as React from 'react'
+import type { CrudField, CrudFormGroup, CrudCustomFieldRenderProps } from '@open-mercato/ui/backend/CrudForm'
 import type { ServiceTicketListItem } from '../types'
 import CustomerCascadeSelect from './CustomerCascadeSelect'
 import MachineCascadeSelect from './MachineCascadeSelect'
@@ -13,6 +14,59 @@ import {
   STATUS_VALUES,
 } from '../lib/constants'
 
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  if (!apiKey || !address.trim()) return null
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=pl&language=pl&key=${apiKey}`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.status !== 'OK' || !data.results?.[0]) return null
+    const { lat, lng } = data.results[0].geometry.location
+    return { lat, lng }
+  } catch {
+    return null
+  }
+}
+
+function AddressField({ id, value, error, disabled, setValue, setFormValue }: CrudCustomFieldRenderProps) {
+  const [geocoding, setGeocoding] = React.useState(false)
+
+  const handleBlur = async () => {
+    const address = String(value ?? '').trim()
+    if (!address || !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return
+    setGeocoding(true)
+    const coords = await geocodeAddress(address)
+    console.log(coords);
+    setGeocoding(false)
+    if (coords) {
+      setFormValue?.('latitude', String(coords.lat))
+      setFormValue?.('longitude', String(coords.lng))
+    }
+  }
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type="text"
+        value={String(value ?? '')}
+        disabled={disabled || geocoding}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleBlur}
+        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+      />
+      {geocoding && (
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground animate-pulse">
+          Geocoding…
+        </span>
+      )}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  )
+}
+
 export type TicketFormValues = {
   id: string
   service_type: string
@@ -22,6 +76,8 @@ export type TicketFormValues = {
   visit_date: string
   visit_end_date: string
   address: string
+  latitude: string
+  longitude: string
   customer_entity_id: string
   contact_person_id: string
   machine_instance_id: string
@@ -69,8 +125,20 @@ export function buildTicketFields(
     {
       id: 'address',
       label: t('service_tickets.form.fields.address.label'),
-      type: 'text',
-      placeholder: t('service_tickets.form.fields.address.placeholder'),
+      type: 'custom',
+      component: (props) => <AddressField {...props} />,
+    },
+    {
+      id: 'latitude',
+      label: t('service_tickets.form.fields.latitude.label'),
+      type: 'number',
+      placeholder: t('service_tickets.form.fields.latitude.placeholder'),
+    },
+    {
+      id: 'longitude',
+      label: t('service_tickets.form.fields.longitude.label'),
+      type: 'number',
+      placeholder: t('service_tickets.form.fields.longitude.placeholder'),
     },
     {
       id: 'order_id',
@@ -103,7 +171,7 @@ export function buildTicketGroups(
 
   return [
     { id: 'basicInfo', title: t('service_tickets.form.groups.basicInfo'), column: 1, fields: basicFields },
-    { id: 'schedule', title: t('service_tickets.form.groups.schedule'), column: 1, fields: ['visit_date', 'visit_end_date', 'address'] },
+    { id: 'schedule', title: t('service_tickets.form.groups.schedule'), column: 1, fields: ['visit_date', 'visit_end_date', 'address', 'latitude', 'longitude'] },
     {
       id: 'links',
       title: t('service_tickets.form.groups.links'),
@@ -164,6 +232,8 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     visit_date: '',
     visit_end_date: '',
     address: '',
+    latitude: '',
+    longitude: '',
     customer_entity_id: '',
     contact_person_id: '',
     machine_instance_id: '',
@@ -181,6 +251,8 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
     visit_date: item.visitDate ? item.visitDate.slice(0, 16) : '',
     visit_end_date: item.visitEndDate ? item.visitEndDate.slice(0, 16) : '',
     address: item.address ?? '',
+    latitude: item.latitude != null ? String(item.latitude) : '',
+    longitude: item.longitude != null ? String(item.longitude) : '',
     customer_entity_id: item.customerEntityId ?? '',
     contact_person_id: item.contactPersonId ?? '',
     machine_instance_id: item.machineInstanceId ?? '',

@@ -27,6 +27,10 @@ export const ticketListItemSchema = z
     visit_date: z.string().nullable().optional(),
     visit_end_date: z.string().nullable().optional(),
     address: z.string().nullable().optional(),
+    latitude: z.number().nullable().optional(),
+    longitude: z.number().nullable().optional(),
+    location_source: z.enum(['geocoded', 'manual']).nullable().optional(),
+    geocoded_address: z.string().nullable().optional(),
     customer_entity_id: z.string().nullable().optional(),
     contact_person_id: z.string().nullable().optional(),
     machine_instance_id: z.string().nullable().optional(),
@@ -37,6 +41,31 @@ export const ticketListItemSchema = z
     created_at: z.string().nullable().optional(),
   })
   .passthrough()
+
+export const ticketMapItemSchema = z.object({
+  id: z.string().uuid(),
+  ticketNumber: z.string(),
+  status: z.string(),
+  serviceType: z.string(),
+  priority: z.string(),
+  visitDate: z.string().nullable(),
+  address: z.string().nullable(),
+  latitude: z.number(),
+  longitude: z.number(),
+})
+
+export const ticketMapSummarySchema = z.object({
+  totalFiltered: z.number(),
+  mapped: z.number(),
+  unmapped: z.number(),
+  cappedAt: z.number(),
+  truncated: z.boolean(),
+})
+
+export const ticketMapResponseSchema = z.object({
+  items: z.array(ticketMapItemSchema),
+  summary: ticketMapSummarySchema,
+})
 
 export const partListItemSchema = z
   .object({

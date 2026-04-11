@@ -13,6 +13,10 @@ import { ServiceTicket, ServiceTicketAssignment, ServiceTicketDateChange } from 
 import { ticketCreateSchema, ticketUpdateSchema } from '../data/validators'
 import { emitServiceTicketEvent } from '../events'
 import { ENTITY_TYPE } from '../lib/constants'
+import { GoogleGeocodingAdapter } from '../lib/geocoding'
+
+// Module-level singleton — one instance per process, no DI overhead needed.
+const geocodingAdapter = new GoogleGeocodingAdapter()
 
 const MAX_TICKET_NUMBER_RETRIES = 3
 
@@ -136,6 +140,40 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
     }
     if (!ticket) throw new CrudHttpError(500, { error: 'Failed to generate ticket number' })
 
+    // Geocode the address if provided and no manual coordinates were supplied
+    if (parsed.address && parsed.latitude == null && parsed.longitude == null) {
+      const geo = await geocodingAdapter.geocode(parsed.address)
+      if (geo) {
+        await de.updateOrmEntity({
+          entity: ServiceTicket,
+          where: { id: ticket.id } as import('@mikro-orm/postgresql').FilterQuery<ServiceTicket>,
+          apply: (e) => {
+            e.latitude = geo.latitude
+            e.longitude = geo.longitude
+            e.locationSource = 'geocoded'
+            e.geocodedAddress = geo.normalizedAddress
+            e.locationUpdatedAt = new Date()
+          },
+        })
+        ticket.latitude = geo.latitude
+        ticket.longitude = geo.longitude
+        ticket.locationSource = 'geocoded'
+        ticket.geocodedAddress = geo.normalizedAddress
+        ticket.locationUpdatedAt = new Date()
+      }
+    } else if (parsed.latitude != null && parsed.longitude != null) {
+      await de.updateOrmEntity({
+        entity: ServiceTicket,
+        where: { id: ticket.id } as import('@mikro-orm/postgresql').FilterQuery<ServiceTicket>,
+        apply: (e) => {
+          e.latitude = parsed.latitude!
+          e.longitude = parsed.longitude!
+          e.locationSource = parsed.location_source ?? 'manual'
+          e.locationUpdatedAt = new Date()
+        },
+      })
+    }
+
     if (parsed.staff_member_ids?.length) {
       for (const staffMemberId of parsed.staff_member_ids) {
         await de.createOrmEntity({
@@ -205,6 +243,10 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
     const oldVisitDate = existing.visitDate
     const oldStatus = existing.status
 
+    const addressChanged =
+      parsed.address !== undefined && parsed.address !== existing.address
+    const manualCoordsProvided = parsed.latitude != null && parsed.longitude != null
+
     const ticket = await de.updateOrmEntity({
       entity: ServiceTicket,
       where: {
@@ -233,9 +275,49 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
         }
         if (parsed.machine_instance_id !== undefined) entity.machineInstanceId = parsed.machine_instance_id
         if (parsed.order_id !== undefined) entity.orderId = parsed.order_id
+
+        // Clear location when address is explicitly nulled
+        if (parsed.address === null) {
+          entity.latitude = null
+          entity.longitude = null
+          entity.locationSource = null
+          entity.geocodedAddress = null
+          entity.locationUpdatedAt = null
+        }
+
+        // Apply manual coordinate override
+        if (manualCoordsProvided) {
+          entity.latitude = parsed.latitude!
+          entity.longitude = parsed.longitude!
+          entity.locationSource = parsed.location_source ?? 'manual'
+          entity.locationUpdatedAt = new Date()
+        }
       },
     })
     if (!ticket) throw new CrudHttpError(404, { error: 'Service ticket not found' })
+
+    // Re-geocode when address changed and no manual coordinates provided
+    if (addressChanged && !manualCoordsProvided && parsed.address) {
+      const geo = await geocodingAdapter.geocode(parsed.address)
+      if (geo) {
+        await de.updateOrmEntity({
+          entity: ServiceTicket,
+          where: { id: parsed.id } as FilterQuery<ServiceTicket>,
+          apply: (e) => {
+            e.latitude = geo.latitude
+            e.longitude = geo.longitude
+            e.locationSource = 'geocoded'
+            e.geocodedAddress = geo.normalizedAddress
+            e.locationUpdatedAt = new Date()
+          },
+        })
+        ticket.latitude = geo.latitude
+        ticket.longitude = geo.longitude
+        ticket.locationSource = 'geocoded'
+        ticket.geocodedAddress = geo.normalizedAddress
+        ticket.locationUpdatedAt = new Date()
+      }
+    }
 
     const dateChanged = String(oldVisitDate ?? '') !== String(ticket.visitDate ?? '')
     if (dateChanged) {
