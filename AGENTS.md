@@ -129,6 +129,18 @@ Register in `src/modules.ts`: `{ id: '<id>', from: '@app' }`
 - Sidebar icons MUST use `lucide-react` components — never inline SVG via `React.createElement`
 - DataTable MUST wire pagination props (`page`, `pageSize`, `totalCount`, `onPageChange`)
 
+## Machine Integration Learnings
+
+- `machine_instances` is the operational source of truth. Service tickets should store `machine_instance_id`, not `machine_asset_id`.
+- `machine_catalog` is supportive domain data. Profile defaults and suggested parts should show up as hints in ticket UX, not automatic writes.
+- Selecting a machine on a service ticket should auto-fill customer, and should only fill address/location when the current ticket field is empty.
+- Do not auto-fill the contact person from machine selection.
+- Machine module REST paths are underscore-based. Use `/api/machine_instances/*` and `/api/machine_catalog/*`, not kebab-case variants.
+- Machine UI payloads may arrive as either `snake_case` or `camelCase`; table/detail mappers should tolerate both.
+- Sidebar grouping is controlled by `pageGroupKey`, not translated labels. Reuse one shared key if catalog and instances should live under one `Machines` menu.
+- When enabling a new module for an existing tenant, backfill ACL features for existing roles or the menu and pages may stay hidden even though the module exists.
+- The three canonical machine demo records (`PRD-CNC-6000` / `RES-00041`, `PRD-HP-TM25` / `RES-00089`, `PRD-PRT-LP800` / `RES-00067`) now belong in module `seedExamples`, not manual local DB setup.
+
 ## Naming Conventions
 
 - Module IDs: plural, snake_case (`order_items`)
@@ -214,7 +226,7 @@ Four modules in scope, ordered by priority:
 | 2 | Service Ticket (Karta Zgłoszenia) | `service_tickets` | In progress — has P1 bugs | Critical |
 | 3 | Technician Card (Karta Serwisanta) | `technicians` (TBD) | Not started | High |
 | 4 | Schedule / Calendar (Grafik) | `schedule` (TBD) | Not started | High |
-| 7 | Customer Machines (Maszyny Klienta) | `resources` (extension) | Spec written | High |
+| 7 | Customer Machines (Maszyny Klienta) | `machine_instances` + `machine_catalog` | In progress | High |
 
 Key automation: saving a ticket with assigned technician + date auto-creates a schedule reservation.
 
@@ -227,8 +239,8 @@ Key automation: saving a ticket with assigned technician + date auto-creates a s
 | Serwisant | Technician / Staff | `StaffAssignment` / `staff_member_ids` |
 | Karta Serwisanta | Technician Card (profile) | `technicians` module |
 | Grafik / Rezerwacja | Schedule / Reservation | `schedule` module |
-| Maszyna Klienta | Customer Machine / Asset | `resources` extension |
-| Zasób | Resource (installed unit) | `ResourcesResource` |
+| Maszyna Klienta | Customer Machine / Installed Unit | `MachineInstance` / `machine_instances` |
+| Profil maszyny | Machine Profile / Catalog Template | `MachineCatalogProfile` / `machine_catalog` |
 | Produkt (katalog) | Product (catalogue type) | `CatalogProduct` |
 | Typ serwisu | Service Type | `service_type` enum |
 | Termin wizyty | Visit Date | `visit_date` / `visit_end_date` |
@@ -266,11 +278,13 @@ yarn test -- --testPathPattern=service_tickets  # Run only service_tickets tests
 - Write tests for validators and commands first — they catch the most bugs per minute invested
 - Component tests use ts-jest with react-jsx — import from `@testing-library/react` if needed
 - Jest moduleNameMapper resolves `@open-mercato/*` to `../open-mercato/packages/*/src/` (local monorepo sibling)
+- If that sibling `../open-mercato` checkout is missing in a worktree, Jest can fail before app code runs. Treat that as an environment problem first.
+- Machine demo coverage on the mainline track should come from `seedExamples`, so `yarn initialize` yields the 3 sample machines without extra manual SQL.
 
 ## Module Dependencies
 
 ```
-Customer Machines (resources ext.)
+Customer Machines (`machine_catalog` + `machine_instances`)
       │
       ▼
 Service Tickets ──────► Schedule/Calendar
@@ -279,7 +293,7 @@ Service Tickets ──────► Schedule/Calendar
 Technician Card ─────────────┘
 ```
 
-- Tickets reference: customers, resources (machines), staff (technicians), catalog products (parts)
+- Tickets reference: customers, machine instances, staff (technicians), catalog products (parts)
 - Schedule entries are created automatically from ticket save (technician + date assigned)
 - Technician card feeds skill/availability filters into ticket assignment
 

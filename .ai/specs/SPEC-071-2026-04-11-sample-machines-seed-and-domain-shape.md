@@ -1,7 +1,7 @@
 # SPEC-071 — Sample Machines Seed And Domain Shape
 
 **Date**: 2026-04-11
-**Status**: Draft
+**Status**: Implemented on mainline follow-up branch
 
 ## TLDR
 
@@ -144,3 +144,4 @@ The sample installed machines imply support for:
 | Date | Change |
 |------|--------|
 | 2026-04-11 | Converted `przykladowe_maszyny.md` into an Open Mercato draft spec and added explicit seed-data requirement |
+| 2026-04-11 | Implemented machine sample seeding via `machine_catalog.setup.ts` and `machine_instances.setup.ts` `seedExamples` hooks on the mainline follow-up branch |
