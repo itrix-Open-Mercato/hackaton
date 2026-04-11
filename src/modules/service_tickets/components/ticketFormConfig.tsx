@@ -22,6 +22,8 @@ export type TicketFormValues = {
   visit_date: string
   visit_end_date: string
   address: string
+  latitude: string
+  longitude: string
   customer_entity_id: string
   contact_person_id: string
   machine_instance_id: string
@@ -73,6 +75,18 @@ export function buildTicketFields(
       placeholder: t('service_tickets.form.fields.address.placeholder'),
     },
     {
+      id: 'latitude',
+      label: t('service_tickets.form.fields.latitude.label'),
+      type: 'number',
+      placeholder: t('service_tickets.form.fields.latitude.placeholder'),
+    },
+    {
+      id: 'longitude',
+      label: t('service_tickets.form.fields.longitude.label'),
+      type: 'number',
+      placeholder: t('service_tickets.form.fields.longitude.placeholder'),
+    },
+    {
       id: 'order_id',
       label: t('service_tickets.form.fields.orderId.label'),
       type: 'text',
@@ -103,7 +117,7 @@ export function buildTicketGroups(
 
   return [
     { id: 'basicInfo', title: t('service_tickets.form.groups.basicInfo'), column: 1, fields: basicFields },
-    { id: 'schedule', title: t('service_tickets.form.groups.schedule'), column: 1, fields: ['visit_date', 'visit_end_date', 'address'] },
+    { id: 'schedule', title: t('service_tickets.form.groups.schedule'), column: 1, fields: ['visit_date', 'visit_end_date', 'address', 'latitude', 'longitude'] },
     {
       id: 'links',
       title: t('service_tickets.form.groups.links'),
@@ -164,6 +178,8 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     visit_date: '',
     visit_end_date: '',
     address: '',
+    latitude: '',
+    longitude: '',
     customer_entity_id: '',
     contact_person_id: '',
     machine_instance_id: '',
@@ -181,6 +197,8 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
     visit_date: item.visitDate ? item.visitDate.slice(0, 16) : '',
     visit_end_date: item.visitEndDate ? item.visitEndDate.slice(0, 16) : '',
     address: item.address ?? '',
+    latitude: item.latitude != null ? String(item.latitude) : '',
+    longitude: item.longitude != null ? String(item.longitude) : '',
     customer_entity_id: item.customerEntityId ?? '',
     contact_person_id: item.contactPersonId ?? '',
     machine_instance_id: item.machineInstanceId ?? '',

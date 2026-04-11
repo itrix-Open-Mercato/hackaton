@@ -52,6 +52,21 @@ export class ServiceTicket {
   @Property({ type: 'text', nullable: true })
   address?: string | null
 
+  @Property({ type: 'float8', nullable: true })
+  latitude?: number | null
+
+  @Property({ type: 'float8', nullable: true })
+  longitude?: number | null
+
+  @Property({ name: 'location_source', type: 'text', nullable: true })
+  locationSource?: 'geocoded' | 'manual' | null
+
+  @Property({ name: 'geocoded_address', type: 'text', nullable: true })
+  geocodedAddress?: string | null
+
+  @Property({ name: 'location_updated_at', type: Date, nullable: true })
+  locationUpdatedAt?: Date | null
+
   @Property({ name: 'customer_entity_id', type: 'uuid', nullable: true })
   customerEntityId?: string | null
 

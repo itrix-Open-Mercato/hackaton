@@ -3,9 +3,8 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
-import type { FilterValues } from '@open-mercato/ui/backend/FilterBar'
 import { RowActions } from '@open-mercato/ui/backend/RowActions'
 import { EnumBadge, type EnumBadgeMap } from '@open-mercato/ui/backend/ValueIcons'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -24,6 +23,7 @@ import {
   STATUS_I18N_KEYS,
   STATUS_VALUES,
 } from '../lib/constants'
+import type { TicketFilters } from './useTicketFilters'
 
 type TicketsResponse = {
   items: ServiceTicketListItem[]
@@ -120,58 +120,22 @@ function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListIt
   ]
 }
 
-export default function ServiceTicketsTable() {
+export default function ServiceTicketsTable({ filters }: { filters: TicketFilters }) {
   const t = useT()
   const router = useRouter()
   const queryClient = useQueryClient()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
-  const [search, setSearch] = React.useState('')
-  const [values, setValues] = React.useState<FilterValues>({})
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: 'createdAt', desc: true }])
-  const [page, setPage] = React.useState(1)
   const scopeVersion = useOrganizationScopeVersion()
 
-  const queryParams = React.useMemo(() => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: '50',
-      sortField: sorting[0]?.id || 'createdAt',
-      sortDir: sorting[0]?.desc ? 'desc' : 'asc',
-    })
-
-    if (search) params.set('search', search)
-
-    Object.entries(values).forEach(([key, value]) => {
-      if (value == null || value === '' || (Array.isArray(value) && value.length === 0)) return
-
-      if (Array.isArray(value)) {
-        params.set(key, value.map(String).join(','))
-      } else {
-        params.set(key, String(value))
-      }
-    })
-
-    return params.toString()
-  }, [page, search, sorting, values])
+  const { search, setSearch, values, setValues, sorting, page, setPage, handleReset, handleSortingChange, tableParams } = filters
 
   const columns = React.useMemo(() => buildColumns(t), [t])
 
   const { data: ticketsData, isLoading, error } = useQuery<TicketsResponse>({
-    queryKey: ['service_tickets', queryParams, scopeVersion],
+    queryKey: ['service_tickets', tableParams, scopeVersion],
     queryFn: async () =>
-      fetchCrudList<ServiceTicketListItem>('service_tickets/tickets', Object.fromEntries(new URLSearchParams(queryParams))),
+      fetchCrudList<ServiceTicketListItem>('service_tickets/tickets', Object.fromEntries(new URLSearchParams(tableParams))),
   })
-
-  const handleSortingChange = (newSorting: SortingState) => {
-    setSorting(newSorting)
-    setPage(1)
-  }
-
-  const handleReset = () => {
-    setSearch('')
-    setValues({})
-    setPage(1)
-  }
 
   if (error) {
     return <div className="text-sm text-destructive">{t('service_tickets.table.error.generic')}</div>
@@ -230,7 +194,7 @@ export default function ServiceTicketsTable() {
           },
         ]}
         filterValues={values}
-        onFiltersApply={(nextValues: FilterValues) => {
+        onFiltersApply={(nextValues) => {
           setValues(nextValues)
           setPage(1)
         }}

@@ -7,6 +7,12 @@ import type { SortingState } from '@tanstack/react-table'
 import type { FilterValues } from '@open-mercato/ui/backend/FilterBar'
 import type { ServiceTicketListItem } from '../../types'
 import ServiceTicketsTable from '../ServiceTicketsTable'
+import { useTicketFilters } from '../useTicketFilters'
+
+function WithFilters() {
+  const filters = useTicketFilters()
+  return <ServiceTicketsTable filters={filters} />
+}
 
 type TicketsResponse = {
   items: ServiceTicketListItem[]
@@ -201,7 +207,7 @@ describe('ServiceTicketsTable', () => {
   })
 
   it('loads tickets with default params and renders navigation actions', async () => {
-    render(<ServiceTicketsTable />)
+    render(<WithFilters />)
 
     await waitFor(() => {
       expect(mockFetchCrudList).toHaveBeenCalledWith(
@@ -227,7 +233,7 @@ describe('ServiceTicketsTable', () => {
   })
 
   it('rebuilds query params when pagination, filters, search, and sorting change', async () => {
-    render(<ServiceTicketsTable />)
+    render(<WithFilters />)
 
     fireEvent.click(screen.getByTestId('page-3'))
     await waitFor(() => {
@@ -300,7 +306,7 @@ describe('ServiceTicketsTable', () => {
   })
 
   it('confirms deletion, removes the ticket, and invalidates the list query', async () => {
-    render(<ServiceTicketsTable />)
+    render(<WithFilters />)
 
     fireEvent.click(screen.getByText('service_tickets.table.actions.delete'))
 
@@ -320,7 +326,7 @@ describe('ServiceTicketsTable', () => {
   })
 
   it('navigates to the edit view when a row is clicked', () => {
-    render(<ServiceTicketsTable />)
+    render(<WithFilters />)
 
     fireEvent.click(screen.getByTestId('open-row'))
 
@@ -334,7 +340,7 @@ describe('ServiceTicketsTable', () => {
       error: new Error('boom'),
     }))
 
-    render(<ServiceTicketsTable />)
+    render(<WithFilters />)
 
     expect(screen.getByText('service_tickets.table.error.generic')).toBeInTheDocument()
   })

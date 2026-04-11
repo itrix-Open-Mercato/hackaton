@@ -68,6 +68,10 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'visit_date',
       'visit_end_date',
       'address',
+      'latitude',
+      'longitude',
+      'location_source',
+      'geocoded_address',
       'customer_entity_id',
       'contact_person_id',
       'machine_instance_id',
@@ -125,6 +129,11 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         return value ? new Date(value as string | number).toISOString() : null
       }
 
+      const numOrNull = (camel: string, snake: string): number | null => {
+        const v = source[camel] ?? source[snake]
+        return v != null ? Number(v) : null
+      }
+
       return {
         id: str('id', 'id'),
         ticketNumber: str('ticketNumber', 'ticket_number'),
@@ -135,6 +144,10 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         visitDate: date('visitDate', 'visit_date'),
         visitEndDate: date('visitEndDate', 'visit_end_date'),
         address: nullable('address', 'address'),
+        latitude: numOrNull('latitude', 'latitude'),
+        longitude: numOrNull('longitude', 'longitude'),
+        locationSource: (source.locationSource ?? source.location_source ?? null) as 'geocoded' | 'manual' | null,
+        geocodedAddress: nullable('geocodedAddress', 'geocoded_address'),
         customerEntityId: nullable('customerEntityId', 'customer_entity_id'),
         contactPersonId: nullable('contactPersonId', 'contact_person_id'),
         machineInstanceId: nullable('machineInstanceId', 'machine_instance_id'),

@@ -12,6 +12,19 @@ const nullableUuid = z.union([emptyToNull, z.string().uuid()]).nullable().option
 const optionalStr = z.union([emptyToUndefined, z.string()]).optional()
 const nullableStr = z.union([emptyToNull, z.string()]).nullable().optional()
 
+const locationSourceSchema = z.enum(['geocoded', 'manual']).nullable().optional()
+// Accept number or numeric string; empty string / null → null
+const nullableLatitude = z
+  .union([z.literal(''), z.null(), z.coerce.number().min(-90).max(90)])
+  .transform((v) => (v === '' || v === null ? null : (v as number)))
+  .nullable()
+  .optional()
+const nullableLongitude = z
+  .union([z.literal(''), z.null(), z.coerce.number().min(-180).max(180)])
+  .transform((v) => (v === '' || v === null ? null : (v as number)))
+  .nullable()
+  .optional()
+
 export const ticketCreateSchema = z.object({
   service_type: serviceTypeSchema,
   priority: ticketPrioritySchema.default('normal'),
@@ -19,6 +32,9 @@ export const ticketCreateSchema = z.object({
   visit_date: optionalStr,
   visit_end_date: optionalStr,
   address: optionalStr,
+  latitude: nullableLatitude,
+  longitude: nullableLongitude,
+  location_source: locationSourceSchema,
   customer_entity_id: optionalUuid,
   contact_person_id: optionalUuid,
   machine_instance_id: optionalUuid,
@@ -37,6 +53,9 @@ export const ticketUpdateSchema = z.object({
   visit_date: nullableStr,
   visit_end_date: nullableStr,
   address: nullableStr,
+  latitude: nullableLatitude,
+  longitude: nullableLongitude,
+  location_source: locationSourceSchema,
   customer_entity_id: nullableUuid,
   contact_person_id: nullableUuid,
   machine_instance_id: nullableUuid,
