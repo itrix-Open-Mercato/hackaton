@@ -46,6 +46,8 @@ type ReservationListResponse = {
 type TechnicianOption = {
   id: string
   display_name: string
+  displayName?: string | null
+  staffMemberName?: string | null
 }
 
 type TechnicianListResponse = {
@@ -145,7 +147,7 @@ export default function TechnicianSchedulePage() {
   const technicianQuery = useQuery<TechnicianListResponse>({
     queryKey: ['technician-schedule-technicians', scopeVersion],
     queryFn: async () => {
-      const call = await apiCallOrThrow<TechnicianListResponse>('/api/field-technicians?page=1&pageSize=100&isActive=true')
+      const call = await apiCallOrThrow<TechnicianListResponse>('/api/technicians/technicians?page=1&pageSize=100&is_active=true')
       return call.result ?? { items: [] }
     },
   })
@@ -185,7 +187,7 @@ export default function TechnicianSchedulePage() {
   const technicianNameById = React.useMemo(() => {
     const map = new Map<string, string>()
     ;(technicianQuery.data?.items ?? []).forEach((item) => {
-      map.set(item.id, item.display_name)
+      map.set(item.id, item.displayName ?? item.staffMemberName ?? item.display_name ?? item.id)
     })
     return map
   }, [technicianQuery.data?.items])
@@ -264,7 +266,7 @@ export default function TechnicianSchedulePage() {
                 <ReservationTypeToggle
                   key={technician.id}
                   active={selectedTechnicianId === technician.id}
-                  label={technician.display_name}
+                  label={technician.displayName ?? technician.staffMemberName ?? technician.display_name ?? technician.id}
                   onClick={() => setSelectedTechnicianId(technician.id)}
                 />
               ))}
@@ -368,7 +370,7 @@ export default function TechnicianSchedulePage() {
                     {selectedReservation.technicians.length > 0 ? selectedReservation.technicians.map((id) => (
                       <Link
                         key={id}
-                        href={`/backend/field-technicians/${id}`}
+                        href={`/backend/technicians/${id}`}
                         className="underline underline-offset-2"
                       >
                         {technicianNameById.get(id) ?? id}

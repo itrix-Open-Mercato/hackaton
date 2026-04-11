@@ -54,7 +54,6 @@ export const enabledModules: ModuleEntry[] = [
   { id: 'service_tickets', from: '@app' },
   { id: 'technicians', from: '@app' },
   { id: 'example', from: '@app' },
-  { id: 'field_technicians', from: '@app' },
   { id: 'technician_schedule', from: '@app' },
 ]
 

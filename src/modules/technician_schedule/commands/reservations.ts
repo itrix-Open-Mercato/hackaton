@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { CommandHandler, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { registerCommand } from '@open-mercato/shared/lib/commands'
 import { withAtomicFlush } from '../lib/atomic'
@@ -202,7 +203,9 @@ const createReservationCommand: CommandHandler<TechnicianReservationCreateInput,
       })
     }
 
+    const reservationId = randomUUID()
     const reservation = em.create(TechnicianReservation, {
+      id: reservationId,
       tenantId: parsed.tenantId,
       organizationId: parsed.organizationId,
       title: buildReservationTitle(parsed),
@@ -223,18 +226,18 @@ const createReservationCommand: CommandHandler<TechnicianReservationCreateInput,
       deletedAt: null,
     })
 
-    await withAtomicFlush(
-      em,
-      [
-        () => {
-          em.persist(reservation)
-        },
-        async () => {
-          await replaceAssignments(em, reservation, technicianIds)
-        },
-      ],
-      { transaction: true },
-    )
+    // Flush reservation first so FK exists, then create assignments
+    await em.begin()
+    try {
+      em.persist(reservation)
+      await em.flush()
+      await replaceAssignments(em, reservation, technicianIds)
+      await em.flush()
+      await em.commit()
+    } catch (error) {
+      await em.rollback()
+      throw error
+    }
 
     return { reservationId: reservation.id }
   },

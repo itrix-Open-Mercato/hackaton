@@ -20,7 +20,7 @@ test.describe('TC-TS-001: Technician Schedule Reservation API', () => {
   })
 
   async function createTechnician(request: Parameters<typeof apiRequest>[0], suffix: string) {
-    const response = await apiRequest(request, 'POST', '/api/field-technicians', {
+    const response = await apiRequest(request, 'POST', '/api/technicians/technicians', {
       token,
       data: { displayName: `QA TS ${suffix} ${Date.now()}` },
     })
@@ -31,7 +31,7 @@ test.describe('TC-TS-001: Technician Schedule Reservation API', () => {
   async function deleteTechnicianIfExists(request: Parameters<typeof apiRequest>[0], id: string | null) {
     if (!id) return
     try {
-      await apiRequest(request, 'DELETE', `/api/field-technicians?id=${id}`, { token })
+      await apiRequest(request, 'DELETE', `/api/technicians/technicians?id=${id}`, { token })
     } catch {
       // ignore cleanup failures
     }

@@ -16,6 +16,8 @@ import { useReservationFormConfig, type ReservationFormValues } from '../../../c
 type TechnicianOption = {
   id: string
   display_name: string
+  displayName?: string | null
+  staffMemberName?: string | null
 }
 
 type TechnicianListResponse = {
@@ -49,7 +51,7 @@ export default function EditTechnicianReservationPage({ params }: { params: Prom
   const technicianQuery = useQuery<TechnicianListResponse>({
     queryKey: ['technician-schedule-technicians-edit'],
     queryFn: async () => {
-      const call = await apiCallOrThrow<TechnicianListResponse>('/api/field-technicians?page=1&pageSize=100&isActive=true')
+      const call = await apiCallOrThrow<TechnicianListResponse>('/api/technicians/technicians?page=1&pageSize=100&is_active=true')
       return call.result ?? { items: [] }
     },
   })

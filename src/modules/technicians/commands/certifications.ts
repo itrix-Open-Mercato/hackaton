@@ -29,9 +29,13 @@ export const addCertificationCommand: CommandHandler<Record<string, unknown>, Te
       data: {
         technician,
         name: parsed.name,
+        certType: parsed.cert_type ?? null,
         certificateNumber: parsed.certificate_number ?? null,
+        code: parsed.code ?? null,
         issuedAt: parsed.issued_at ? new Date(parsed.issued_at) : null,
         expiresAt: parsed.expires_at ? new Date(parsed.expires_at) : null,
+        issuedBy: parsed.issued_by ?? null,
+        notes: parsed.notes ?? null,
         tenantId: scope.tenantId,
         organizationId: scope.organizationId,
       },
@@ -58,9 +62,13 @@ export const updateCertificationCommand: CommandHandler<Record<string, unknown>,
       } as FilterQuery<TechnicianCertification>,
       apply: (entity) => {
         if (parsed.name !== undefined) entity.name = parsed.name
+        if (parsed.cert_type !== undefined) entity.certType = parsed.cert_type
         if (parsed.certificate_number !== undefined) entity.certificateNumber = parsed.certificate_number
+        if (parsed.code !== undefined) entity.code = parsed.code
         if (parsed.issued_at !== undefined) entity.issuedAt = parsed.issued_at ? new Date(parsed.issued_at) : null
         if (parsed.expires_at !== undefined) entity.expiresAt = parsed.expires_at ? new Date(parsed.expires_at) : null
+        if (parsed.issued_by !== undefined) entity.issuedBy = parsed.issued_by
+        if (parsed.notes !== undefined) entity.notes = parsed.notes
       },
     })
     if (!cert) throw new CrudHttpError(404, { error: 'Certification not found' })

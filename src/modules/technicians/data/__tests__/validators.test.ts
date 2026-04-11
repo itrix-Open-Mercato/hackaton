@@ -9,6 +9,11 @@ import {
   certificationAddSchema,
   certificationUpdateSchema,
   certificationRemoveSchema,
+  locationStatusSchema,
+  availabilityDayTypeSchema,
+  availabilityCreateSchema,
+  availabilityUpdateSchema,
+  availabilityDeleteSchema,
 } from '../validators'
 
 const VALID_UUID = '11111111-1111-4111-8111-111111111111'
@@ -33,6 +38,8 @@ describe('technicianCreateSchema', () => {
     const result = technicianCreateSchema.parse({ staff_member_id: VALID_UUID })
     expect(result.staff_member_id).toBe(VALID_UUID)
     expect(result.is_active).toBe(true)
+    expect(result.location_status).toBe('in_office')
+    expect(result.languages).toEqual([])
     expect(result.skills).toBeUndefined()
     expect(result.certifications).toBeUndefined()
   })
@@ -80,6 +87,45 @@ describe('technicianCreateSchema', () => {
       }),
     ).toThrow()
   })
+
+  it('accepts new profile fields', () => {
+    const result = technicianCreateSchema.parse({
+      staff_member_id: VALID_UUID,
+      display_name: 'John Doe',
+      first_name: 'John',
+      last_name: 'Doe',
+      email: 'john@example.com',
+      phone: '+48123456789',
+      location_status: 'on_trip',
+      languages: ['en', 'pl'],
+      vehicle_id: VALID_UUID,
+      vehicle_label: 'Van #1',
+      current_order_id: VALID_UUID,
+    })
+    expect(result.display_name).toBe('John Doe')
+    expect(result.location_status).toBe('on_trip')
+    expect(result.languages).toEqual(['en', 'pl'])
+    expect(result.vehicle_id).toBe(VALID_UUID)
+  })
+
+  it('accepts certifications with enhanced fields', () => {
+    const result = technicianCreateSchema.parse({
+      staff_member_id: VALID_UUID,
+      certifications: [{
+        name: 'ISO 9001',
+        cert_type: 'quality',
+        code: 'ISO-001',
+        issued_by: 'TUV',
+        issued_at: '2026-01-01',
+        expires_at: '2028-01-01',
+        notes: 'Annual renewal',
+      }],
+    })
+    expect(result.certifications![0].cert_type).toBe('quality')
+    expect(result.certifications![0].code).toBe('ISO-001')
+    expect(result.certifications![0].issued_by).toBe('TUV')
+    expect(result.certifications![0].notes).toBe('Annual renewal')
+  })
 })
 
 describe('technicianUpdateSchema', () => {
@@ -96,6 +142,42 @@ describe('technicianUpdateSchema', () => {
   it('allows nullable notes', () => {
     const result = technicianUpdateSchema.parse({ id: VALID_UUID, notes: '' })
     expect(result.notes).toBeNull()
+  })
+
+  it('accepts partial updates with new fields', () => {
+    const result = technicianUpdateSchema.parse({
+      id: VALID_UUID,
+      display_name: 'Updated Name',
+      location_status: 'at_client',
+      languages: ['de'],
+    })
+    expect(result.display_name).toBe('Updated Name')
+    expect(result.location_status).toBe('at_client')
+    expect(result.languages).toEqual(['de'])
+    expect(result.is_active).toBeUndefined()
+  })
+
+  it('accepts nullable new fields set to null', () => {
+    const result = technicianUpdateSchema.parse({
+      id: VALID_UUID,
+      email: null,
+      vehicle_id: null,
+    })
+    expect(result.email).toBeNull()
+    expect(result.vehicle_id).toBeNull()
+  })
+})
+
+describe('locationStatusSchema', () => {
+  it.each(['in_office', 'on_trip', 'at_client', 'unavailable'] as const)(
+    'accepts valid status: %s',
+    (status) => {
+      expect(locationStatusSchema.parse(status)).toBe(status)
+    },
+  )
+
+  it('rejects invalid status', () => {
+    expect(() => locationStatusSchema.parse('sick')).toThrow()
   })
 })
 
@@ -151,6 +233,21 @@ describe('certificationAddSchema', () => {
       certificationAddSchema.parse({ technician_id: VALID_UUID, name: '' }),
     ).toThrow()
   })
+
+  it('accepts enhanced fields', () => {
+    const result = certificationAddSchema.parse({
+      technician_id: VALID_UUID,
+      name: 'Welding',
+      cert_type: 'trade',
+      code: 'WC-001',
+      issued_by: 'Authority',
+      notes: 'Level 3',
+    })
+    expect(result.cert_type).toBe('trade')
+    expect(result.code).toBe('WC-001')
+    expect(result.issued_by).toBe('Authority')
+    expect(result.notes).toBe('Level 3')
+  })
 })
 
 describe('certificationUpdateSchema', () => {
@@ -170,11 +267,112 @@ describe('certificationUpdateSchema', () => {
     })
     expect(result.certificate_number).toBeNull()
   })
+
+  it('accepts partial enhanced field updates', () => {
+    const result = certificationUpdateSchema.parse({
+      id: VALID_UUID,
+      notes: 'Renewed annually',
+      cert_type: 'quality',
+      issued_by: 'TUV',
+    })
+    expect(result.notes).toBe('Renewed annually')
+    expect(result.cert_type).toBe('quality')
+    expect(result.issued_by).toBe('TUV')
+    expect(result.name).toBeUndefined()
+    expect(result.code).toBeUndefined()
+  })
 })
 
 describe('certificationRemoveSchema', () => {
   it('accepts valid UUID', () => {
     const result = certificationRemoveSchema.parse({ id: VALID_UUID })
     expect(result.id).toBe(VALID_UUID)
+  })
+})
+
+describe('availabilityDayTypeSchema', () => {
+  it.each(['work_day', 'trip', 'unavailable', 'holiday'] as const)(
+    'accepts valid day type: %s',
+    (type) => {
+      expect(availabilityDayTypeSchema.parse(type)).toBe(type)
+    },
+  )
+
+  it('rejects invalid day type', () => {
+    expect(() => availabilityDayTypeSchema.parse('sick')).toThrow()
+  })
+})
+
+describe('availabilityCreateSchema', () => {
+  it('accepts valid input', () => {
+    const result = availabilityCreateSchema.parse({
+      technician_id: VALID_UUID,
+      date: '2026-04-15',
+      day_type: 'holiday',
+    })
+    expect(result.technician_id).toBe(VALID_UUID)
+    expect(result.date).toBe('2026-04-15')
+    expect(result.day_type).toBe('holiday')
+  })
+
+  it('defaults day_type to work_day', () => {
+    const result = availabilityCreateSchema.parse({
+      technician_id: VALID_UUID,
+      date: '2026-04-15',
+    })
+    expect(result.day_type).toBe('work_day')
+  })
+
+  it('rejects invalid date format', () => {
+    expect(() => availabilityCreateSchema.parse({
+      technician_id: VALID_UUID,
+      date: 'not-a-date',
+    })).toThrow()
+  })
+
+  it('rejects missing technician_id', () => {
+    expect(() => availabilityCreateSchema.parse({ date: '2026-04-15' })).toThrow()
+  })
+
+  it('rejects missing date', () => {
+    expect(() => availabilityCreateSchema.parse({ technician_id: VALID_UUID })).toThrow()
+  })
+})
+
+describe('availabilityUpdateSchema', () => {
+  it('requires id', () => {
+    expect(() => availabilityUpdateSchema.parse({})).toThrow()
+  })
+
+  it('accepts partial update', () => {
+    const result = availabilityUpdateSchema.parse({
+      id: VALID_UUID,
+      day_type: 'trip',
+    })
+    expect(result.day_type).toBe('trip')
+    expect(result.notes).toBeUndefined()
+  })
+
+  it('accepts notes update', () => {
+    const result = availabilityUpdateSchema.parse({
+      id: VALID_UUID,
+      notes: 'Out of office',
+    })
+    expect(result.notes).toBe('Out of office')
+  })
+})
+
+describe('availabilityDeleteSchema', () => {
+  it('requires id', () => {
+    expect(() => availabilityDeleteSchema.parse({})).toThrow()
+  })
+
+  it('accepts valid id', () => {
+    const result = availabilityDeleteSchema.parse({ id: VALID_UUID })
+    expect(result.id).toBe(VALID_UUID)
+  })
+
+  it('rejects invalid id', () => {
+    expect(() => availabilityDeleteSchema.parse({ id: 'bad' })).toThrow()
   })
 })

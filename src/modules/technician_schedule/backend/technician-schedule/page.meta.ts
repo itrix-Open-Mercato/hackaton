@@ -9,7 +9,7 @@ export const metadata = {
   pageTitle: 'Technician schedule',
   pageTitleKey: 'technicianSchedule.page.title',
   pageGroup: 'Service',
-  pageGroupKey: 'technicianSchedule.nav.group',
+  pageGroupKey: 'service_tickets.nav.group',
   pageOrder: 31,
   icon: technicianScheduleIcon,
   breadcrumb: [{ label: 'Technician schedule', labelKey: 'technicianSchedule.page.title' }],

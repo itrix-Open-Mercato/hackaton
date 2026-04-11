@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   name: 'technician_schedule',
   title: 'Technician Schedule',
   version: '1.0.0',
-  description: 'Calendar reservations and availability scheduling for field technicians.',
+  description: 'Calendar reservations and availability scheduling for technicians.',
   author: 'App',
   license: 'Proprietary',
 }

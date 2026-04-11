@@ -7,6 +7,8 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 type TechnicianOption = {
   id: string
   display_name: string
+  displayName?: string | null
+  staffMemberName?: string | null
 }
 
 export type ReservationFormValues = {
@@ -55,7 +57,7 @@ export function useReservationFormConfig(technicians: TechnicianOption[]) {
       type: 'select',
       required: true,
       multiple: true,
-      options: technicians.map((item) => ({ value: item.id, label: item.display_name })),
+      options: technicians.map((item) => ({ value: item.id, label: item.displayName ?? item.staffMemberName ?? item.display_name ?? item.id })),
     },
     {
       id: 'vehicleId',

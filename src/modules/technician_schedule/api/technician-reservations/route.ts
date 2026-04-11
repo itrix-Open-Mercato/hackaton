@@ -3,6 +3,21 @@ import { makeCrudRoute } from '@open-mercato/shared/lib/crud/factory'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { parseScopedCommandInput, resolveCrudRecordId } from '@open-mercato/shared/lib/api/scoped'
+
+function ensureDatetimeOffset(value: unknown): unknown {
+  if (typeof value !== 'string' || value.length === 0) return value
+  // Already has offset (Z or +/-HH:MM)
+  if (/[Zz]$/.test(value) || /[+-]\d{2}:\d{2}$/.test(value)) return value
+  // Append Z for UTC
+  return value + 'Z'
+}
+
+function normalizeDatetimeFields(payload: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...payload }
+  if ('startsAt' in result) result['startsAt'] = ensureDatetimeOffset(result['startsAt'])
+  if ('endsAt' in result) result['endsAt'] = ensureDatetimeOffset(result['endsAt'])
+  return result
+}
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { TechnicianReservation, TechnicianReservationTechnician } from '../../data/entities'
@@ -255,7 +270,8 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       schema: rawBodySchema,
       mapInput: async ({ raw, ctx }) => {
         const { translate } = await resolveTranslations()
-        return parseScopedCommandInput(technicianReservationCreateSchema, raw ?? {}, ctx, translate)
+        const normalized = normalizeDatetimeFields((raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>)
+        return parseScopedCommandInput(technicianReservationCreateSchema, normalized, ctx, translate)
       },
       response: ({ result }) => ({ id: result?.reservationId ?? null }),
       status: 201,
@@ -265,7 +281,8 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       schema: rawBodySchema,
       mapInput: async ({ raw, ctx }) => {
         const { translate } = await resolveTranslations()
-        return parseScopedCommandInput(technicianReservationUpdateSchema, raw ?? {}, ctx, translate)
+        const normalized = normalizeDatetimeFields((raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>)
+        return parseScopedCommandInput(technicianReservationUpdateSchema, normalized, ctx, translate)
       },
       response: () => ({ ok: true }),
     },

@@ -70,6 +70,16 @@ export const createTechnicianCommand: CommandHandler<Record<string, unknown>, Te
       data: {
         staffMemberId: parsed.staff_member_id,
         isActive: parsed.is_active,
+        displayName: parsed.display_name ?? null,
+        firstName: parsed.first_name ?? null,
+        lastName: parsed.last_name ?? null,
+        email: parsed.email ?? null,
+        phone: parsed.phone ?? null,
+        locationStatus: parsed.location_status ?? 'in_office',
+        languages: parsed.languages ?? [],
+        vehicleId: parsed.vehicle_id ?? null,
+        vehicleLabel: parsed.vehicle_label ?? null,
+        currentOrderId: parsed.current_order_id ?? null,
         notes: parsed.notes ?? null,
         tenantId: scope.tenantId,
         organizationId: scope.organizationId,
@@ -98,9 +108,13 @@ export const createTechnicianCommand: CommandHandler<Record<string, unknown>, Te
           data: {
             technician,
             name: cert.name,
+            certType: cert.cert_type ?? null,
             certificateNumber: cert.certificate_number ?? null,
+            code: cert.code ?? null,
             issuedAt: cert.issued_at ? new Date(cert.issued_at) : null,
             expiresAt: cert.expires_at ? new Date(cert.expires_at) : null,
+            issuedBy: cert.issued_by ?? null,
+            notes: cert.notes ?? null,
             tenantId: scope.tenantId,
             organizationId: scope.organizationId,
           },
@@ -143,6 +157,16 @@ export const updateTechnicianCommand: CommandHandler<Record<string, unknown>, Te
       } as FilterQuery<Technician>,
       apply: (entity) => {
         if (parsed.is_active !== undefined) entity.isActive = parsed.is_active
+        if (parsed.display_name !== undefined) entity.displayName = parsed.display_name
+        if (parsed.first_name !== undefined) entity.firstName = parsed.first_name
+        if (parsed.last_name !== undefined) entity.lastName = parsed.last_name
+        if (parsed.email !== undefined) entity.email = parsed.email
+        if (parsed.phone !== undefined) entity.phone = parsed.phone
+        if (parsed.location_status !== undefined) entity.locationStatus = parsed.location_status
+        if (parsed.languages !== undefined) entity.languages = parsed.languages
+        if (parsed.vehicle_id !== undefined) entity.vehicleId = parsed.vehicle_id
+        if (parsed.vehicle_label !== undefined) entity.vehicleLabel = parsed.vehicle_label
+        if (parsed.current_order_id !== undefined) entity.currentOrderId = parsed.current_order_id
         if (parsed.notes !== undefined) entity.notes = parsed.notes
       },
     })

@@ -10,10 +10,8 @@ describe('technicians injection-table', () => {
     expect(injectionTable).not.toBeNull()
   })
 
-  it('has sidebar menu spot', () => {
-    expect(injectionTable).toHaveProperty('menu:sidebar:main')
-    const entry = (injectionTable as Record<string, any>)['menu:sidebar:main']
-    expect(entry.widgetId).toBe('technicians.injection.TechnicianMenuItem')
+  it('does not have sidebar menu spot (page.meta handles sidebar)', () => {
+    expect(injectionTable).not.toHaveProperty('menu:sidebar:main')
   })
 
   it('has service ticket crud-form spot', () => {
