@@ -80,6 +80,7 @@ describe('service tickets route', () => {
     const config = getRouteConfig()
 
     const filters = await config.list.buildFilters({
+      id: 'ticket-0',
       ids: 'ticket-1,ticket-2',
       status: 'scheduled,completed',
       service_type: 'maintenance,warranty_claim',
@@ -138,6 +139,18 @@ describe('service tickets route', () => {
     })
   })
 
+  it('supports filtering by a singular id query parameter', async () => {
+    const config = getRouteConfig()
+
+    await expect(
+      config.list.buildFilters({
+        id: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).resolves.toMatchObject({
+      id: '11111111-1111-4111-8111-111111111111',
+    })
+  })
+
   it('transforms both snake_case and camelCase route rows into API list items', () => {
     const config = getRouteConfig()
 
@@ -171,6 +184,10 @@ describe('service tickets route', () => {
       visitDate: '2026-04-11T09:00:00.000Z',
       visitEndDate: '2026-04-11T12:00:00.000Z',
       address: 'Dock 7',
+      latitude: null,
+      longitude: null,
+      locationSource: null,
+      geocodedAddress: null,
       customerEntityId: 'customer-1',
       contactPersonId: 'person-1',
       machineInstanceId: 'machine-1',
@@ -211,6 +228,10 @@ describe('service tickets route', () => {
       visitDate: '2026-04-12T07:00:00.000Z',
       visitEndDate: null,
       address: null,
+      latitude: null,
+      longitude: null,
+      locationSource: null,
+      geocodedAddress: null,
       customerEntityId: null,
       contactPersonId: null,
       machineInstanceId: null,

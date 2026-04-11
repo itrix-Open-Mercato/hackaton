@@ -31,6 +31,9 @@
       ],
       "@/.mercato/*": [
         "./.mercato/*"
+      ],
+      "#generated/*": [
+        "./.mercato/generated/*"
       ]
     },
     "typeRoots": [

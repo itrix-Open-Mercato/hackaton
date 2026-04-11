@@ -14,6 +14,7 @@ import {
   mapTicketToFormValues,
   type TicketFormValues,
 } from '../../../../components/ticketFormConfig'
+import { ENTITY_TYPE } from '../../../../lib/constants'
 import type { ServiceTicketListItem } from '../../../../types'
 
 export default function EditServiceTicketPage({ params }: { params?: { id?: string } }) {
@@ -79,6 +80,7 @@ export default function EditServiceTicketPage({ params }: { params?: { id?: stri
           <CrudForm<TicketFormValues>
             title={t('service_tickets.form.edit.title')}
             backHref="/backend/service-tickets"
+            entityIds={[ENTITY_TYPE]}
             fields={baseFields}
             groups={groups}
             initialValues={initial ?? fallbackInitialValues}

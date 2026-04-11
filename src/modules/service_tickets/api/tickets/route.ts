@@ -3,8 +3,9 @@ import { makeCrudRoute } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { Where, WhereValue } from '@open-mercato/shared/lib/query/types'
+import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import { ticketCrudEvents, ticketCrudIndexer } from '../../commands/tickets'
-import { ServiceTicket } from '../../data/entities'
+import { ServiceTicket, ServiceTicketAssignment } from '../../data/entities'
 import { ENTITY_TYPE } from '../../lib/constants'
 import type { ServiceTicketListItem } from '../../types'
 import {
@@ -176,6 +177,37 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         tenantId: (source.tenantId ?? source.tenant_id ?? '') as string,
         organizationId: (source.organizationId ?? source.organization_id ?? '') as string,
         createdAt: date('createdAt', 'created_at'),
+      }
+    },
+  },
+  hooks: {
+    afterList: async (payload: unknown, ctx: any) => {
+      const items = Array.isArray((payload as { items?: unknown[] })?.items)
+        ? ((payload as { items: ServiceTicketListItem[] }).items)
+        : []
+      if (!items.length) return
+
+      const em = ctx.container.resolve('em') as EntityManager
+      const assignments = await em.find(
+        ServiceTicketAssignment,
+        {
+          ticket: { id: { $in: items.map((item) => item.id) } },
+          tenantId: ctx.auth?.tenantId ?? undefined,
+          organizationId: ctx.selectedOrganizationId ?? ctx.auth?.orgId ?? undefined,
+        } as FilterQuery<ServiceTicketAssignment>,
+      )
+
+      const staffIdsByTicket = new Map<string, string[]>()
+      for (const assignment of assignments) {
+        const ticketId = typeof assignment.ticket === 'string' ? assignment.ticket : assignment.ticket?.id
+        if (!ticketId) continue
+        const next = staffIdsByTicket.get(ticketId) ?? []
+        next.push(assignment.staffMemberId)
+        staffIdsByTicket.set(ticketId, next)
+      }
+
+      for (const item of items) {
+        item.staffMemberIds = staffIdsByTicket.get(item.id) ?? []
       }
     },
   },
