@@ -42,7 +42,7 @@ From `reviews/agents-against-main-2026-04-11.md`:
 
 | # | Priority | Issue | File |
 |---|----------|-------|------|
-| 1 | P1 | Missing DB migration for service_tickets entities | `data/entities.ts` — run `yarn mercato db generate` |
+| 1 | ~~P1~~ | ~~Missing DB migration for service_tickets entities~~ | Fixed — manual migration written (`migrations/Migration20260411092949_service_tickets.ts`) |
 | 2 | P1 | UTC timestamps fed into `datetime-local` inputs — timezone shift on save | `components/ticketFormConfig.tsx:159-160` |
 | 3 | P1 | Duplicate staff IDs accepted → partial writes + 500 | `data/validators.ts:26` |
 | 4 | P2 | OpenAPI schema uses snake_case but API returns camelCase | `api/openapi.ts:22-23` |
@@ -89,3 +89,10 @@ Technician Card ─────────────┘
 ## Service Types
 
 `commissioning` | `regular` | `warranty_claim` | `maintenance`
+
+## Migration Gotchas
+
+- `yarn mercato db generate` is **broken for `@app` modules** on Node 24 — tsx loads `@mikro-orm/core` as a separate instance, so `@Entity()` metadata is invisible to the CLI's `MikroORM.init()`. Write migrations manually for now.
+- Migration filename pattern: `Migration<YYYYMMDDHHMMSS>_<module_id>.ts`, class: `Migration<YYYYMMDDHHMMSS>_<module_id>`. Use `IF NOT EXISTS` / `IF EXISTS` guards for idempotency.
+- Failed `db generate` runs leave stray `.ts` files in `node_modules/*/dist/*/migrations/`. These block `db migrate` (Node 24 refuses to type-strip `.ts` inside node_modules). Clean with: `find node_modules/@open-mercato -path "*/dist/*/migrations/Migration*.ts" ! -name "*.d.ts" -delete`
+- PostgreSQL runs in Docker. Access via: `docker exec -i $(docker ps --filter "name=postgres" --format '{{.ID}}' | head -1) psql -U postgres -d open-mercato`
