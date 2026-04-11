@@ -28,7 +28,7 @@ function createMockEm(options: { existingCount?: number; knex?: ReturnType<typeo
   const created: { entity: string; data: Record<string, unknown> }[] = []
   const persisted: unknown[] = []
 
-  const em = {
+  const em: any = {
     count: jest.fn().mockResolvedValue(options.existingCount ?? 0),
     create: jest.fn((entityClass: { name: string }, data: Record<string, unknown>) => {
       const record = { id: `mock-${entityClass.name}-${created.length}`, ...data }
@@ -45,7 +45,7 @@ function createMockEm(options: { existingCount?: number; knex?: ReturnType<typeo
     }),
   }
 
-  return { em: em as any, created, persisted }
+  return { em, created, persisted }
 }
 
 describe('dateFromDayOffset', () => {

@@ -20,8 +20,6 @@ export const setup: ModuleSetupConfig = {
 
     if (!staffMembers.length) return
 
-    const orgId = staffMembers[0].organization_id
-
     const technicianSeeds = [
       {
         staffMember: staffMembers[0],
@@ -50,10 +48,11 @@ export const setup: ModuleSetupConfig = {
 
     for (const seed of technicianSeeds) {
       // Check if technician already exists for this staff member
+      const staffOrgId = seed.staffMember.organization_id
       const existing = await em.findOne(Technician, {
         staffMemberId: seed.staffMember.id,
         tenantId,
-        organizationId: orgId,
+        organizationId: staffOrgId,
         deletedAt: null,
       } as FilterQuery<Technician>)
       if (existing) continue
@@ -63,7 +62,7 @@ export const setup: ModuleSetupConfig = {
         isActive: true,
         notes: `Seeded technician profile for ${seed.staffMember.display_name}`,
         tenantId,
-        organizationId: orgId,
+        organizationId: staffOrgId,
       })
       em.persist(technician)
       await em.flush()
@@ -73,7 +72,7 @@ export const setup: ModuleSetupConfig = {
           technician,
           name: skillName,
           tenantId,
-          organizationId: orgId,
+          organizationId: staffOrgId,
         })
         em.persist(skill)
       }
@@ -86,7 +85,7 @@ export const setup: ModuleSetupConfig = {
           issuedAt: new Date('2025-01-01'),
           expiresAt: cert.expiresAt,
           tenantId,
-          organizationId: orgId,
+          organizationId: staffOrgId,
         })
         em.persist(certification)
       }

@@ -187,7 +187,7 @@ export default function EditTechnicianPage({ params }: { params?: { id?: string 
     setSubmitting(true)
     setErr(null)
     try {
-      await updateCrud('technicians/technicians', { id, is_active: isActive === 'true', notes: notes || undefined })
+      await updateCrud('technicians/technicians', { id, is_active: isActive === 'true', notes: notes || null })
       flash(t('technicians.form.flash.saved'), 'success')
       refetch()
     } catch (error: any) {
@@ -223,7 +223,7 @@ export default function EditTechnicianPage({ params }: { params?: { id?: string 
         ) : (
           <div className="space-y-6">
             <form onSubmit={handleSubmit}>
-              <FormHeader mode="edit" title={t('technicians.form.edit.title')} backHref="/backend/technicians" onDelete={handleDelete} />
+              <FormHeader mode="edit" title={t('technicians.form.edit.title')} backHref="/backend/technicians" />
 
               <div className="space-y-6 mt-6">
                 <div className="rounded-lg border p-4 space-y-4">
@@ -249,7 +249,7 @@ export default function EditTechnicianPage({ params }: { params?: { id?: string 
                 </div>
               </div>
 
-              <FormFooter cancelHref="/backend/technicians" submitLabel={t('technicians.form.edit.submit')} isSubmitting={submitting} />
+              <FormFooter actions={{ cancelHref: '/backend/technicians', submit: { label: t('technicians.form.edit.submit'), pending: submitting }, showDelete: true, onDelete: handleDelete }} />
             </form>
 
             <SkillsSection

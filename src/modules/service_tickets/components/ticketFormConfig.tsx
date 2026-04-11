@@ -30,6 +30,23 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
   }
 }
 
+function padDateTimePart(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+export function toDateTimeLocalValue(value?: string | null): string {
+  if (!value) return ''
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return ''
+
+  return [
+    parsed.getFullYear(),
+    padDateTimePart(parsed.getMonth() + 1),
+    padDateTimePart(parsed.getDate()),
+  ].join('-') + `T${padDateTimePart(parsed.getHours())}:${padDateTimePart(parsed.getMinutes())}`
+}
+
 function AddressField({ id, value, error, disabled, setValue, setFormValue }: CrudCustomFieldRenderProps) {
   const [geocoding, setGeocoding] = React.useState(false)
 
@@ -38,7 +55,6 @@ function AddressField({ id, value, error, disabled, setValue, setFormValue }: Cr
     if (!address || !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return
     setGeocoding(true)
     const coords = await geocodeAddress(address)
-    console.log(coords);
     setGeocoding(false)
     if (coords) {
       setFormValue?.('latitude', String(coords.lat))
@@ -82,6 +98,7 @@ export type TicketFormValues = {
   contact_person_id: string
   machine_instance_id: string
   order_id: string
+  staff_member_ids: string[]
 }
 
 type BuildTicketFormConfigOptions = {
@@ -238,24 +255,38 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     contact_person_id: '',
     machine_instance_id: '',
     order_id: '',
+    staff_member_ids: [],
   }
 }
 
 export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormValues {
+  // The list API returns snake_case (raw DB columns), detail may return camelCase.
+  // Handle both casings defensively per CLAUDE.md convention.
+  const raw = item as Record<string, unknown>
+  const pick = <T,>(camel: string, snake: string): T | undefined =>
+    (raw[camel] ?? raw[snake]) as T | undefined
+
+  const visitDate = pick<string>('visitDate', 'visit_date')
+  const visitEndDate = pick<string>('visitEndDate', 'visit_end_date')
+  const lat = pick<number>('latitude', 'latitude')
+  const lng = pick<number>('longitude', 'longitude')
+  const staffMemberIds = pick<string[]>('staffMemberIds', 'staff_member_ids')
+
   return {
     id: item.id,
-    service_type: item.serviceType,
-    status: item.status,
-    priority: item.priority,
-    description: item.description ?? '',
-    visit_date: item.visitDate ? item.visitDate.slice(0, 16) : '',
-    visit_end_date: item.visitEndDate ? item.visitEndDate.slice(0, 16) : '',
-    address: item.address ?? '',
-    latitude: item.latitude != null ? String(item.latitude) : '',
-    longitude: item.longitude != null ? String(item.longitude) : '',
-    customer_entity_id: item.customerEntityId ?? '',
-    contact_person_id: item.contactPersonId ?? '',
-    machine_instance_id: item.machineInstanceId ?? '',
-    order_id: item.orderId ?? '',
+    service_type: pick<string>('serviceType', 'service_type') ?? '',
+    status: pick<string>('status', 'status') ?? '',
+    priority: pick<string>('priority', 'priority') ?? '',
+    description: pick<string>('description', 'description') ?? '',
+    visit_date: toDateTimeLocalValue(visitDate),
+    visit_end_date: toDateTimeLocalValue(visitEndDate),
+    address: pick<string>('address', 'address') ?? '',
+    latitude: lat != null ? String(lat) : '',
+    longitude: lng != null ? String(lng) : '',
+    customer_entity_id: pick<string>('customerEntityId', 'customer_entity_id') ?? '',
+    contact_person_id: pick<string>('contactPersonId', 'contact_person_id') ?? '',
+    machine_instance_id: pick<string>('machineInstanceId', 'machine_instance_id') ?? '',
+    order_id: pick<string>('orderId', 'order_id') ?? '',
+    staff_member_ids: Array.isArray(staffMemberIds) ? staffMemberIds : [],
   }
 }

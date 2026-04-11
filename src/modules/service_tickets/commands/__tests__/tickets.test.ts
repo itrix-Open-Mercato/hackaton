@@ -60,6 +60,8 @@ function createCtx(overrides: {
       userId: 'user-1',
       ...(overrides.auth ?? {}),
     },
+    organizationScope: null,
+    organizationIds: ['org-1'],
     selectedOrganizationId: overrides.selectedOrganizationId ?? 'org-1',
     container: {
       resolve: (key: string) => {
@@ -68,7 +70,7 @@ function createCtx(overrides: {
         throw new Error(`Unexpected dependency: ${key}`)
       },
     },
-  }
+  } as any
 }
 
 function createKnexMock(maxNum: string | null = 'SRV-000009', personRows: Record<string, unknown>[] = []) {

@@ -55,5 +55,6 @@
   "technicians.tickets.empty": "No ticket assignments yet",
   "technicians.picker.title": "Assign Technicians",
   "technicians.picker.search": "Search technicians by ID or skill...",
-  "technicians.picker.empty": "No technicians found"
+  "technicians.picker.empty": "No technicians found",
+  "technicians.picker.noneSelected": "No technicians assigned yet"
 }

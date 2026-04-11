@@ -43,6 +43,8 @@ function createCtx(overrides: {
       userId: 'user-1',
     },
     selectedOrganizationId: 'org-1',
+    organizationScope: null,
+    organizationIds: ['org-1'],
     container: {
       resolve: (key: string) => {
         if (key === 'dataEngine') return dataEngine
@@ -50,7 +52,7 @@ function createCtx(overrides: {
         throw new Error(`Unexpected dependency: ${key}`)
       },
     },
-  }
+  } as any
 }
 
 describe('technicians commands', () => {

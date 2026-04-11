@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { getAuthFromRequest } from '@open-mercato/shared/lib/auth/server'
@@ -92,19 +93,21 @@ export async function DELETE(req: Request) {
 }
 
 export const openApi: OpenApiRouteDoc = {
-  GET: {
-    summary: 'List skills for a technician',
-    tags: ['Technicians'],
-    responses: { 200: { description: 'List of skills' } },
-  },
-  POST: {
-    summary: 'Add a skill to a technician',
-    tags: ['Technicians'],
-    responses: { 201: { description: 'Skill created' } },
-  },
-  DELETE: {
-    summary: 'Remove a skill from a technician',
-    tags: ['Technicians'],
-    responses: { 200: { description: 'Skill removed' } },
+  tag: 'Technicians',
+  summary: 'Technician skills',
+  pathParams: z.object({ id: z.string().uuid() }),
+  methods: {
+    GET: {
+      summary: 'List skills for a technician',
+      responses: [{ status: 200, description: 'List of skills' }],
+    },
+    POST: {
+      summary: 'Add a skill to a technician',
+      responses: [{ status: 201, description: 'Skill created' }],
+    },
+    DELETE: {
+      summary: 'Remove a skill from a technician',
+      responses: [{ status: 200, description: 'Skill removed' }],
+    },
   },
 }

@@ -43,7 +43,7 @@ export default function CreateTechnicianPage() {
         }),
       })
       flash(t('technicians.form.flash.created'), 'success')
-      router.push(`/backend/technicians/${res.id}/edit`)
+      router.push(`/backend/technicians/${res.result?.id}/edit`)
     } catch (err) {
       const message = err instanceof Error ? err.message : t('technicians.form.error.create')
       setError(message)
@@ -108,11 +108,7 @@ export default function CreateTechnicianPage() {
             </div>
           </div>
 
-          <FormFooter
-            cancelHref="/backend/technicians"
-            submitLabel={t('technicians.form.create.submit')}
-            isSubmitting={submitting}
-          />
+          <FormFooter actions={{ cancelHref: '/backend/technicians', submit: { label: t('technicians.form.create.submit'), pending: submitting } }} />
         </form>
       </PageBody>
     </Page>

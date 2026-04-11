@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { getAuthFromRequest } from '@open-mercato/shared/lib/auth/server'
@@ -116,24 +117,25 @@ export async function DELETE(req: Request) {
 }
 
 export const openApi: OpenApiRouteDoc = {
-  GET: {
-    summary: 'List certifications for a technician',
-    tags: ['Technicians'],
-    responses: { 200: { description: 'List of certifications' } },
-  },
-  POST: {
-    summary: 'Add a certification to a technician',
-    tags: ['Technicians'],
-    responses: { 201: { description: 'Certification created' } },
-  },
-  PUT: {
-    summary: 'Update a certification',
-    tags: ['Technicians'],
-    responses: { 200: { description: 'Certification updated' } },
-  },
-  DELETE: {
-    summary: 'Remove a certification from a technician',
-    tags: ['Technicians'],
-    responses: { 200: { description: 'Certification removed' } },
+  tag: 'Technicians',
+  summary: 'Technician certifications',
+  pathParams: z.object({ id: z.string().uuid() }),
+  methods: {
+    GET: {
+      summary: 'List certifications for a technician',
+      responses: [{ status: 200, description: 'List of certifications' }],
+    },
+    POST: {
+      summary: 'Add a certification to a technician',
+      responses: [{ status: 201, description: 'Certification created' }],
+    },
+    PUT: {
+      summary: 'Update a certification',
+      responses: [{ status: 200, description: 'Certification updated' }],
+    },
+    DELETE: {
+      summary: 'Remove a certification from a technician',
+      responses: [{ status: 200, description: 'Certification removed' }],
+    },
   },
 }

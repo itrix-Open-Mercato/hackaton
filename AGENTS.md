@@ -112,7 +112,7 @@ Register in `src/modules.ts`: `{ id: '<id>', from: '@app' }`
 
 ## CRITICAL rules — always follow without exception
 
-1. **After editing any entity file**: run `yarn mercato db generate` (never hand-write migrations)
+1. **After editing any entity file**: run `yarn mercato db generate` — but see Migration Gotchas in CLAUDE.md: `db generate` is **broken for `@app` modules on Node 24**, so write migrations manually for now
 2. **After editing `src/modules.ts`** or any module file: run `yarn generate`
 3. **Never edit `.mercato/generated/*`** — auto-generated. Never edit `node_modules/@open-mercato/*` — eject instead.
 4. **Confirm migrations with user** before running `yarn mercato db migrate`
@@ -224,8 +224,8 @@ Four modules in scope, ordered by priority:
 
 | # | Module | Module ID | Status | Priority |
 |---|--------|-----------|--------|----------|
-| 2 | Service Ticket (Karta Zgłoszenia) | `service_tickets` | In progress — has P1 bugs | Critical |
-| 3 | Technician Card (Karta Serwisanta) | `technicians` (TBD) | Not started | High |
+| 2 | Service Ticket (Karta Zgłoszenia) | `service_tickets` | In progress — P1 bugs fixed | Critical |
+| 3 | Technician Card (Karta Serwisanta) | `technicians` | In progress | High |
 | 4 | Schedule / Calendar (Grafik) | `schedule` (TBD) | Not started | High |
 | 7 | Customer Machines (Maszyny Klienta) | `machine_instances` + `machine_catalog` | In progress | High |
 
@@ -259,10 +259,10 @@ From `reviews/agents-against-main-2026-04-11.md`:
 | # | Priority | Issue | File |
 |---|----------|-------|------|
 | 1 | ~~P1~~ | ~~Missing DB migration for service_tickets entities~~ | Fixed — manual migration written (`migrations/Migration20260411092949_service_tickets.ts`) |
-| 2 | P1 | UTC timestamps fed into `datetime-local` inputs — timezone shift on save | `components/ticketFormConfig.tsx:159-160` |
-| 3 | P1 | Duplicate staff IDs accepted → partial writes + 500 | `data/validators.ts:26` |
-| 4 | P2 | OpenAPI schema uses snake_case but API returns camelCase | `api/openapi.ts:22-23` |
-| 5 | P2 | `visit_date` / `visit_end_date` accept any string, not ISO datetime | `data/validators.ts:19-20` |
+| 2 | ~~P1~~ | ~~UTC timestamps fed into `datetime-local` inputs — timezone shift on save~~ | Fixed — `toDateTimeLocalValue()` converts through `Date` to local string (`components/ticketFormConfig.tsx:37-48`) |
+| 3 | ~~P1~~ | ~~Duplicate staff IDs accepted → partial writes + 500~~ | Fixed — `staffMemberIdsSchema` has `.refine()` uniqueness check (`data/validators.ts:27-31`) |
+| 4 | ~~P2~~ | ~~OpenAPI schema uses snake_case but API returns camelCase~~ | Fixed — `ticketListItemSchema` uses camelCase (`api/openapi.ts:19-44`) |
+| 5 | ~~P2~~ | ~~`visit_date` / `visit_end_date` accept any string, not ISO datetime~~ | Fixed — ISO 8601 regex + `isValidDateTimeToken` refine (`data/validators.ts:15-26`) |
 
 ## Testing
 
@@ -275,7 +275,7 @@ yarn test -- --testPathPattern=service_tickets  # Run only service_tickets tests
 ```
 
 - Test location: `src/modules/<id>/**/__tests__/*.test.(ts|tsx)`
-- 27 tests exist and pass for `service_tickets` (validators, commands, routes, components)
+- 20 test suites / 101 tests across `service_tickets`, `technicians`, and `machine_instances`
 - Write tests for validators and commands first — they catch the most bugs per minute invested
 - Component tests use ts-jest with react-jsx — import from `@testing-library/react` if needed
 - Jest moduleNameMapper resolves `@open-mercato/*` to `../open-mercato/packages/*/src/` (local monorepo sibling)

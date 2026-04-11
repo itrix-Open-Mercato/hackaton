@@ -55,5 +55,6 @@
   "technicians.tickets.empty": "Brak przypisanych zgłoszeń",
   "technicians.picker.title": "Przypisz serwisantów",
   "technicians.picker.search": "Szukaj serwisantów po ID lub umiejętności...",
-  "technicians.picker.empty": "Nie znaleziono serwisantów"
+  "technicians.picker.empty": "Nie znaleziono serwisantów",
+  "technicians.picker.noneSelected": "Nie przypisano jeszcze serwisantów"
 }

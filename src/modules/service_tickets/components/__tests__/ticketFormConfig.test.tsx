@@ -8,6 +8,7 @@ import {
   buildTicketGroups,
   createEmptyTicketFormValues,
   mapTicketToFormValues,
+  toDateTimeLocalValue,
 } from '../ticketFormConfig'
 
 jest.mock('../CustomerCascadeSelect', () => ({
@@ -102,10 +103,13 @@ describe('ticketFormConfig', () => {
       visit_date: '',
       visit_end_date: '',
       address: '',
+      latitude: '',
+      longitude: '',
       customer_entity_id: '',
       contact_person_id: '',
       machine_instance_id: '',
       order_id: '',
+      staff_member_ids: [],
     })
 
     expect(
@@ -123,6 +127,7 @@ describe('ticketFormConfig', () => {
         contactPersonId: 'person-1',
         machineInstanceId: 'machine-1',
         orderId: 'order-1',
+        staffMemberIds: ['staff-1', 'staff-2'],
       }),
     ).toEqual({
       id: 'ticket-1',
@@ -130,13 +135,16 @@ describe('ticketFormConfig', () => {
       status: 'scheduled',
       priority: 'urgent',
       description: 'Needs inspection',
-      visit_date: '2026-04-11T09:15',
-      visit_end_date: '2026-04-11T11:45',
+      visit_date: toDateTimeLocalValue('2026-04-11T09:15:00.000Z'),
+      visit_end_date: toDateTimeLocalValue('2026-04-11T11:45:00.000Z'),
       address: 'Dock 7',
+      latitude: '',
+      longitude: '',
       customer_entity_id: 'company-1',
       contact_person_id: 'person-1',
       machine_instance_id: 'machine-1',
       order_id: 'order-1',
+      staff_member_ids: ['staff-1', 'staff-2'],
     })
   })
 })

@@ -23,6 +23,7 @@ const querySchema = z
     is_active: z.enum(['true', 'false']).optional(),
     skill: z.string().optional(),
     staff_member_id: z.string().uuid().optional(),
+    staff_member_ids: z.string().optional(),
     page: z.coerce.number().min(1).default(1),
     pageSize: z.coerce.number().min(1).max(100).default(50),
     sortField: z.string().optional().default('created_at'),
@@ -76,7 +77,15 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (q.id) F.id = q.id
       if (q.ids) F.id = { $in: q.ids.split(',') }
       if (q.is_active !== undefined) F.is_active = q.is_active === 'true'
-      if (q.staff_member_id) F.staff_member_id = q.staff_member_id
+      const staffMemberIds = new Set<string>()
+      if (q.staff_member_id) staffMemberIds.add(q.staff_member_id)
+      if (q.staff_member_ids) {
+        for (const id of q.staff_member_ids.split(',').map((value) => value.trim()).filter(Boolean)) {
+          staffMemberIds.add(id)
+        }
+      }
+      if (staffMemberIds.size === 1) F.staff_member_id = [...staffMemberIds][0]
+      if (staffMemberIds.size > 1) F.staff_member_id = { $in: [...staffMemberIds] }
 
       if (q.skill) {
         const em = (ctx.container.resolve('em') as EntityManager).fork()

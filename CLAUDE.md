@@ -31,6 +31,10 @@ Use `git show <branch>:<path>` to read files from other branches without switchi
 - **`buildFilters` receives `(query, ctx)` as args** — use `ctx.container.resolve('em')` for subqueries (e.g., filtering technicians by skill name via `technician_skills` table).
 - **Staff module API** at `/api/staff/team-members` returns `display_name` (snake_case). Handle both `displayName` and `display_name` in client components.
 
+## Operational Learnings
+
+See `.ai/lessons.md` for patterns and mistakes discovered during development (UTC datetime handling, camelCase normalization, Jest moduleNameMapper quirks, staffMemberIds enrichment). Agents update this file as they work.
+
 ## Docker / Local Dev
 
 - Redis runs only inside Docker network (port not exposed to host). `yarn initialize` from host gets ECONNREFUSED on Redis — the Redis errors are non-fatal but noisy.
