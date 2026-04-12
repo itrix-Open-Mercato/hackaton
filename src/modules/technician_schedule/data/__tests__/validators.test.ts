@@ -50,6 +50,8 @@ describe('technicianReservationCreateSchema', () => {
     const result = technicianReservationCreateSchema.parse({
       ...validInput,
       title: 'My Visit',
+      sourceType: 'service_ticket',
+      sourceTicketId: VALID_UUID,
       customerName: 'Acme Corp',
       address: '123 Main St',
       notes: 'Bring tools',
@@ -57,6 +59,7 @@ describe('technicianReservationCreateSchema', () => {
       vehicleLabel: 'Van #1',
     })
     expect(result.title).toBe('My Visit')
+    expect(result.sourceTicketId).toBe(VALID_UUID)
     expect(result.customerName).toBe('Acme Corp')
   })
 
@@ -111,8 +114,11 @@ describe('technicianReservationUpdateSchema', () => {
     const result = technicianReservationUpdateSchema.parse({
       id: VALID_UUID,
       technicianIds: [TECH_UUID, VALID_UUID],
+      sourceType: 'service_ticket',
+      sourceTicketId: VALID_UUID,
     })
     expect(result.technicianIds).toHaveLength(2)
+    expect(result.sourceTicketId).toBe(VALID_UUID)
   })
 
   it('rejects empty technicianIds array when provided', () => {

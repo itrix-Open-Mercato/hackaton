@@ -36,6 +36,7 @@ const F = {
   reservation_type: 'reservation_type',
   status: 'status',
   source_type: 'source_type',
+  source_ticket_id: 'source_ticket_id',
   source_order_id: 'source_order_id',
   starts_at: 'starts_at',
   ends_at: 'ends_at',
@@ -70,6 +71,7 @@ const listSchema = z.object({
   status: z.string().optional(),
   startsAtFrom: z.string().datetime({ offset: true }).optional(),
   startsAtTo: z.string().datetime({ offset: true }).optional(),
+  sourceTicketId: z.string().uuid().optional(),
   sourceOrderId: z.string().uuid().optional(),
   ids: z.string().optional(),
   sortField: z.string().optional().default('starts_at'),
@@ -84,6 +86,7 @@ type ReservationRow = {
   reservation_type: string
   status: string
   source_type: string
+  source_ticket_id: string | null
   source_order_id: string | null
   starts_at: Date
   ends_at: Date
@@ -106,6 +109,7 @@ const listItemSchema = z.object({
   reservation_type: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   source_type: z.string().nullable().optional(),
+  source_ticket_id: z.string().uuid().nullable().optional(),
   source_order_id: z.string().uuid().nullable().optional(),
   starts_at: z.string().nullable().optional(),
   ends_at: z.string().nullable().optional(),
@@ -118,6 +122,7 @@ const listItemSchema = z.object({
   created_at: z.string().nullable().optional(),
   updated_at: z.string().nullable().optional(),
   technicians: z.array(z.string().uuid()).optional(),
+  technician_names: z.array(z.string()).optional(),
 })
 
 const { GET, POST, PUT, DELETE } = makeCrudRoute({
@@ -140,6 +145,7 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       F.reservation_type,
       F.status,
       F.source_type,
+      F.source_ticket_id,
       F.source_order_id,
       F.starts_at,
       F.ends_at,
@@ -175,6 +181,7 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       }
 
       if (query.status) filters[F.status] = query.status
+      if (query.sourceTicketId) filters[F.source_ticket_id] = query.sourceTicketId
       if (query.sourceOrderId) filters[F.source_order_id] = query.sourceOrderId
       if (query.startsAtFrom || query.startsAtTo) {
         const startsAtFilter: Record<string, string> = {}
@@ -224,6 +231,9 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
     transformItem: (item: ReservationRow) => ({
       ...item,
       technicians: Array.isArray(item.technicians) ? item.technicians : [],
+      technician_names: Array.isArray((item as ReservationRow & { technician_names?: string[] }).technician_names)
+        ? (item as ReservationRow & { technician_names?: string[] }).technician_names
+        : [],
       starts_at: item.starts_at instanceof Date ? item.starts_at.toISOString() : item.starts_at,
       ends_at: item.ends_at instanceof Date ? item.ends_at.toISOString() : item.ends_at,
       created_at: item.created_at instanceof Date ? item.created_at.toISOString() : item.created_at,
@@ -252,15 +262,37 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       )
 
       const techniciansByReservation = new Map<string, string[]>()
+      const allTechnicianIds = new Set<string>()
       assignments.forEach((assignment) => {
         const current = techniciansByReservation.get(assignment.reservationId) ?? []
         current.push(assignment.technicianId)
         techniciansByReservation.set(assignment.reservationId, current)
+        allTechnicianIds.add(assignment.technicianId)
       })
+
+      const technicianNameById = new Map<string, string>()
+      if (allTechnicianIds.size > 0) {
+        type TechnicianRow = {
+          id: string
+          display_name: string | null
+          first_name: string | null
+          last_name: string | null
+        }
+        const knex = (em as any).getConnection().getKnex()
+        const rows = await knex<TechnicianRow>('technicians')
+          .select('id', 'display_name', 'first_name', 'last_name')
+          .whereIn('id', [...allTechnicianIds])
+        rows.forEach((row) => {
+          const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ').trim()
+          technicianNameById.set(row.id, row.display_name ?? fullName ?? row.id)
+        })
+      }
 
       items.forEach((item) => {
         const reservationId = typeof item.id === 'string' ? item.id : null
-        item.technicians = reservationId ? (techniciansByReservation.get(reservationId) ?? []) : []
+        const technicianIds = reservationId ? (techniciansByReservation.get(reservationId) ?? []) : []
+        item.technicians = technicianIds
+        item.technician_names = technicianIds.map((id) => technicianNameById.get(id) ?? id)
       })
     },
   },

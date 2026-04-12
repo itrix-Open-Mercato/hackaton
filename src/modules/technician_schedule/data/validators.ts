@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const technicianReservationTypeSchema = z.enum(['client_visit', 'internal_work', 'leave', 'training'])
 export const technicianReservationStatusSchema = z.enum(['auto_confirmed', 'confirmed', 'cancelled'])
-export const technicianReservationSourceTypeSchema = z.enum(['service_order', 'manual'])
+export const technicianReservationSourceTypeSchema = z.enum(['service_ticket', 'service_order', 'manual'])
 
 const reservationTimeSchema = z
   .object({
@@ -25,6 +25,7 @@ export const technicianReservationCreateSchema = z
     reservationType: technicianReservationTypeSchema,
     status: technicianReservationStatusSchema.optional().default('confirmed'),
     sourceType: technicianReservationSourceTypeSchema.optional().default('manual'),
+    sourceTicketId: z.string().uuid().nullable().optional(),
     sourceOrderId: z.string().uuid().nullable().optional(),
     technicianIds: z.array(z.string().uuid()).min(1),
     vehicleId: z.string().uuid().nullable().optional(),
@@ -42,6 +43,7 @@ export const technicianReservationUpdateSchema = z
     reservationType: technicianReservationTypeSchema.optional(),
     status: technicianReservationStatusSchema.optional(),
     sourceType: technicianReservationSourceTypeSchema.optional(),
+    sourceTicketId: z.string().uuid().nullable().optional(),
     sourceOrderId: z.string().uuid().nullable().optional(),
     technicianIds: z.array(z.string().uuid()).min(1).optional(),
     startsAt: z.string().datetime({ offset: true }).optional(),

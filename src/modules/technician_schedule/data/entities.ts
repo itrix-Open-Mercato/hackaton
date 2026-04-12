@@ -2,11 +2,12 @@ import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/core'
 
 export type TechnicianReservationType = 'client_visit' | 'internal_work' | 'leave' | 'training'
 export type TechnicianReservationStatus = 'auto_confirmed' | 'confirmed' | 'cancelled'
-export type TechnicianReservationSourceType = 'service_order' | 'manual'
+export type TechnicianReservationSourceType = 'service_ticket' | 'service_order' | 'manual'
 
 @Entity({ tableName: 'technician_reservations' })
 @Index({ name: 'technician_reservations_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({ name: 'technician_reservations_window_idx', properties: ['tenantId', 'organizationId', 'startsAt', 'endsAt'] })
+@Index({ name: 'technician_reservations_source_ticket_idx', properties: ['sourceTicketId'] })
 @Index({ name: 'technician_reservations_source_order_idx', properties: ['sourceOrderId'] })
 export class TechnicianReservation {
   @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
@@ -29,6 +30,9 @@ export class TechnicianReservation {
 
   @Property({ name: 'source_type', type: 'text', default: 'manual' })
   sourceType: TechnicianReservationSourceType = 'manual'
+
+  @Property({ name: 'source_ticket_id', type: 'uuid', nullable: true })
+  sourceTicketId?: string | null
 
   @Property({ name: 'source_order_id', type: 'uuid', nullable: true })
   sourceOrderId?: string | null

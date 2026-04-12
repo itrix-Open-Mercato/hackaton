@@ -25,6 +25,7 @@ type ReservationSnapshot = {
   reservationType: TechnicianReservation['reservationType']
   status: TechnicianReservation['status']
   sourceType: TechnicianReservation['sourceType']
+  sourceTicketId: string | null
   sourceOrderId: string | null
   startsAt: string
   endsAt: string
@@ -102,6 +103,7 @@ async function loadReservationSnapshot(em: EntityManager, id: string): Promise<R
     reservationType: reservation.reservationType,
     status: reservation.status,
     sourceType: reservation.sourceType,
+    sourceTicketId: reservation.sourceTicketId ?? null,
     sourceOrderId: reservation.sourceOrderId ?? null,
     startsAt: reservation.startsAt.toISOString(),
     endsAt: reservation.endsAt.toISOString(),
@@ -144,6 +146,7 @@ function applySnapshotToReservation(
   reservation.reservationType = snapshot.reservationType
   reservation.status = snapshot.status
   reservation.sourceType = snapshot.sourceType
+  reservation.sourceTicketId = snapshot.sourceTicketId
   reservation.sourceOrderId = snapshot.sourceOrderId
   reservation.startsAt = new Date(snapshot.startsAt)
   reservation.endsAt = new Date(snapshot.endsAt)
@@ -212,6 +215,7 @@ const createReservationCommand: CommandHandler<TechnicianReservationCreateInput,
       reservationType: parsed.reservationType,
       status: parsed.status ?? 'confirmed',
       sourceType: parsed.sourceType ?? 'manual',
+      sourceTicketId: parsed.sourceTicketId ?? null,
       sourceOrderId: parsed.sourceOrderId ?? null,
       startsAt,
       endsAt,
@@ -331,6 +335,7 @@ const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput,
           if (parsed.reservationType !== undefined) reservation.reservationType = parsed.reservationType
           if (parsed.status !== undefined) reservation.status = parsed.status
           if (parsed.sourceType !== undefined) reservation.sourceType = parsed.sourceType
+          if (parsed.sourceTicketId !== undefined) reservation.sourceTicketId = parsed.sourceTicketId ?? null
           if (parsed.sourceOrderId !== undefined) reservation.sourceOrderId = parsed.sourceOrderId ?? null
           if (parsed.startsAt !== undefined) reservation.startsAt = nextStartsAt
           if (parsed.endsAt !== undefined) reservation.endsAt = nextEndsAt
@@ -386,6 +391,7 @@ const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput,
         reservationType: before.reservationType,
         status: before.status,
         sourceType: before.sourceType,
+        sourceTicketId: before.sourceTicketId,
         sourceOrderId: before.sourceOrderId,
         startsAt: new Date(before.startsAt),
         endsAt: new Date(before.endsAt),
@@ -523,6 +529,7 @@ const deleteReservationCommand: CommandHandler<{ id: string }, { reservationId: 
         reservationType: before.reservationType,
         status: before.status,
         sourceType: before.sourceType,
+        sourceTicketId: before.sourceTicketId,
         sourceOrderId: before.sourceOrderId,
         startsAt: new Date(before.startsAt),
         endsAt: new Date(before.endsAt),

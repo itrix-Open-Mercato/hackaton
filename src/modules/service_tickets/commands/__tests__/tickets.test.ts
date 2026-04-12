@@ -51,7 +51,11 @@ function createCtx(overrides: {
   selectedOrganizationId?: string
 } = {}) {
   const dataEngine = overrides.dataEngine ?? {}
-  const em = overrides.em ?? {}
+  const em = {
+    find: jest.fn().mockResolvedValue([]),
+    flush: jest.fn().mockResolvedValue(undefined),
+    ...(overrides.em ?? {}),
+  }
 
   return {
     auth: {

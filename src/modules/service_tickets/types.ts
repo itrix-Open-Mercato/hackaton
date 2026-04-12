@@ -28,6 +28,18 @@ export type ServiceTicketListItem = {
   _service_tickets?: {
     companyName?: string | null
   }
+  _schedule?: {
+    reservations: Array<{
+      id: string
+      technicianIds: string[]
+      technicianNames: string[]
+      startsAt: string
+      endsAt: string
+      status: string
+      sourceType: string
+      sourceTicketId: string | null
+    }>
+  }
 }
 
 /** Read-only projection used by the map endpoint. Only tickets with coordinates are included. */

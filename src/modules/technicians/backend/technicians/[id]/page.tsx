@@ -5,10 +5,25 @@ import { useQuery } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
+import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Award, Pencil } from 'lucide-react'
 import type { TechnicianListItem } from '../../../types'
+
+type ReservationRecord = {
+  id: string
+  title: string
+  starts_at: string
+  ends_at: string
+  status: 'auto_confirmed' | 'confirmed' | 'cancelled'
+  source_type: 'service_ticket' | 'service_order' | 'manual'
+  source_ticket_id: string | null
+}
+
+type ReservationListResponse = {
+  items: ReservationRecord[]
+}
 
 export default function TechnicianDetailPage({ params }: { params?: { id?: string } }) {
   const t = useT()
@@ -17,6 +32,21 @@ export default function TechnicianDetailPage({ params }: { params?: { id?: strin
   const { data, isLoading } = useQuery({
     queryKey: ['technician-detail', id],
     queryFn: () => fetchCrudList<TechnicianListItem>('technicians/technicians', { id: String(id), pageSize: 1 }),
+    enabled: !!id,
+  })
+  const reservationQuery = useQuery<ReservationListResponse>({
+    queryKey: ['technician-detail-reservations', id],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        technicianId: String(id),
+        page: '1',
+        pageSize: '10',
+        sortField: 'starts_at',
+        sortDir: 'asc',
+      })
+      const call = await apiCallOrThrow<ReservationListResponse>(`/api/technician-reservations?${params.toString()}`)
+      return call.result ?? { items: [] }
+    },
     enabled: !!id,
   })
 
@@ -112,6 +142,31 @@ export default function TechnicianDetailPage({ params }: { params?: { id?: strin
                           {new Date(c.expiresAt).toLocaleDateString()}
                         </span>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <h3 className="mb-3 text-sm font-medium">{t('technicians.detail.schedule', 'Upcoming reservations')}</h3>
+              {(reservationQuery.data?.items ?? []).length === 0 ? (
+                <span className="text-sm text-muted-foreground">{t('technicians.detail.scheduleEmpty', 'No reservations found.')}</span>
+              ) : (
+                <div className="space-y-2">
+                  {(reservationQuery.data?.items ?? []).map((reservation) => (
+                    <div key={reservation.id} className="rounded border px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-medium">{reservation.title}</div>
+                        {reservation.source_ticket_id ? (
+                          <Link href={`/backend/service-tickets/${reservation.source_ticket_id}/edit`} className="text-xs underline underline-offset-2">
+                            {t('technicians.detail.openTicket', 'Open ticket')}
+                          </Link>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 text-muted-foreground">
+                        {new Date(reservation.starts_at).toLocaleString()} - {new Date(reservation.ends_at).toLocaleString()}
+                      </div>
                     </div>
                   ))}
                 </div>

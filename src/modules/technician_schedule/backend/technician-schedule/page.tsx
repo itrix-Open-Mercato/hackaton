@@ -22,7 +22,8 @@ type ReservationRow = {
   title: string
   reservation_type: 'client_visit' | 'internal_work' | 'leave' | 'training'
   status: 'auto_confirmed' | 'confirmed' | 'cancelled'
-  source_type: 'service_order' | 'manual'
+  source_type: 'service_ticket' | 'service_order' | 'manual'
+  source_ticket_id: string | null
   source_order_id: string | null
   starts_at: string
   ends_at: string
@@ -32,6 +33,7 @@ type ReservationRow = {
   address: string | null
   notes: string | null
   technicians: string[]
+  technician_names?: string[]
 }
 
 type ReservationListResponse = {
@@ -97,7 +99,11 @@ function mapReservationToScheduleItem(row: ReservationRow, t: (key: string, fall
     startsAt: new Date(row.starts_at),
     endsAt: new Date(row.ends_at),
     status: row.status === 'cancelled' ? 'cancelled' : 'confirmed',
-    linkLabel: row.source_order_id ? t('technicianSchedule.calendar.orderLink', 'Order') : undefined,
+    linkLabel: row.source_ticket_id
+      ? t('technicianSchedule.calendar.ticketLink', 'Ticket')
+      : row.source_order_id
+        ? t('technicianSchedule.calendar.orderLink', 'Order')
+        : undefined,
     metadata: {
       reservation: row,
     },
@@ -367,13 +373,13 @@ export default function TechnicianSchedulePage() {
                 <div>
                   <div className="font-medium">{t('technicianSchedule.details.technicians', 'Technicians')}</div>
                   <div className="flex flex-wrap gap-2 text-muted-foreground">
-                    {selectedReservation.technicians.length > 0 ? selectedReservation.technicians.map((id) => (
+                    {selectedReservation.technicians.length > 0 ? selectedReservation.technicians.map((id, index) => (
                       <Link
                         key={id}
                         href={`/backend/technicians/${id}`}
                         className="underline underline-offset-2"
                       >
-                        {technicianNameById.get(id) ?? id}
+                        {selectedReservation.technician_names?.[index] ?? technicianNameById.get(id) ?? id}
                       </Link>
                     )) : '—'}
                   </div>
@@ -399,9 +405,13 @@ export default function TechnicianSchedulePage() {
                   </div>
                 </div>
                 <div>
-                  <div className="font-medium">{t('technicianSchedule.details.order', 'Order')}</div>
+                  <div className="font-medium">{t('technicianSchedule.details.source', 'Source')}</div>
                   <div className="text-muted-foreground">
-                    {selectedReservation.source_order_id ? (
+                    {selectedReservation.source_ticket_id ? (
+                      <Link href={`/backend/service-tickets/${selectedReservation.source_ticket_id}/edit`} className="underline underline-offset-2">
+                        {selectedReservation.source_ticket_id}
+                      </Link>
+                    ) : selectedReservation.source_order_id ? (
                       <Link href={`/backend/service-orders/${selectedReservation.source_order_id}`} className="underline underline-offset-2">
                         {selectedReservation.source_order_id}
                       </Link>
