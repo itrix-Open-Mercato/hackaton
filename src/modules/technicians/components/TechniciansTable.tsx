@@ -210,7 +210,7 @@ export default function TechniciansTable() {
           onPageChange: setPage,
         }}
         isLoading={isLoading}
-        onRowClick={(row) => router.push(`/backend/technicians/${row.id}/edit`)}
+        onRowClick={(row) => router.push(`/backend/technicians/${row.id}`)}
       />
       {ConfirmDialogElement}
     </>
