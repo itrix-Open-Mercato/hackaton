@@ -22,6 +22,7 @@ const defaults = {
   machine_instance_id: '',
   order_id: '',
   staff_member_ids: [] as string[],
+  machine_service_type_ids: [] as string[],
 }
 
 describe('mergeInboxPrefill', () => {
