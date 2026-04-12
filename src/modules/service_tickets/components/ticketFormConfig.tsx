@@ -15,7 +15,7 @@ import {
   STATUS_VALUES,
 } from '../lib/constants'
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   if (!apiKey || !address.trim()) return null
   try {

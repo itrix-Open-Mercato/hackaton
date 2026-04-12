@@ -11,6 +11,7 @@ import {
   buildTicketFields,
   buildTicketGroups,
   createEmptyTicketFormValues,
+  geocodeAddress,
   mapTicketToFormValues,
   type TicketFormValues,
 } from '../../../../components/ticketFormConfig'
@@ -66,6 +67,21 @@ export default function EditServiceTicketPage({ params }: { params?: { id?: stri
       cancelled = true
     }
   }, [id, t])
+
+  // Auto-geocode: when ticket loads with address but no coordinates, fill them in the background
+  React.useEffect(() => {
+    if (!initial) return
+    const address = initial.address?.trim()
+    const hasCoords = initial.latitude?.trim() && initial.longitude?.trim()
+    if (!address || hasCoords) return
+
+    let cancelled = false
+    void geocodeAddress(address).then((coords) => {
+      if (cancelled || !coords) return
+      setInitial((prev) => prev ? { ...prev, latitude: String(coords.lat), longitude: String(coords.lng) } : prev)
+    })
+    return () => { cancelled = true }
+  }, [initial?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- run once after initial load, keyed by ticket id
 
   const fallbackInitialValues = React.useMemo<TicketFormValues>(() => createEmptyTicketFormValues(id ?? ''), [id])
 
