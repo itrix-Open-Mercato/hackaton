@@ -79,5 +79,6 @@
   "service_protocols.widget.unavailable": "Protokół niedostępny dla tego zgłoszenia",
   "service_protocols.widget.confirmCreate": "Czy chcesz utworzyć nowy protokół serwisowy dla tego zgłoszenia?",
   "service_protocols.widget.confirmYes": "Utwórz",
-  "service_protocols.widget.confirmNo": "Anuluj"
+  "service_protocols.widget.confirmNo": "Anuluj",
+  "service_protocols.widget.dialogDescription": "Uzupełnij szczegóły prac dla tego protokołu serwisowego."
 }

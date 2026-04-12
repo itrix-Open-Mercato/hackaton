@@ -1,12 +1,11 @@
 "use client"
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { LoadingMessage, ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList, updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 
@@ -22,7 +21,11 @@ type ProtocolDetail = {
 export default function EditServiceProtocolPage({ params }: { params?: { id?: string } }) {
   const t = useT()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const id = params?.id
+
+  const returnTo = searchParams.get('returnTo')
+  const backHref = returnTo ?? `/backend/service-protocols/${id}`
 
   const [workDescription, setWorkDescription] = React.useState('')
   const [technicianNotes, setTechnicianNotes] = React.useState('')
@@ -54,7 +57,7 @@ export default function EditServiceProtocolPage({ params }: { params?: { id?: st
     }),
     onSuccess: () => {
       flash(t('service_protocols.form.flash.saved'), 'success')
-      router.push(`/backend/service-protocols/${id}`)
+      router.push(backHref)
     },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.form.error.save'), 'error'),
   })
@@ -69,7 +72,7 @@ export default function EditServiceProtocolPage({ params }: { params?: { id?: st
         <PageBody>
           <div className="max-w-2xl mx-auto p-6">
             <p className="text-sm text-muted-foreground">{t('service_protocols.form.error.readonly')}</p>
-            <Button variant="outline" className="mt-4" onClick={() => router.push(`/backend/service-protocols/${id}`)}>
+            <Button variant="outline" className="mt-4" onClick={() => router.push(backHref)}>
               {t('service_protocols.detail.back')}
             </Button>
           </div>
@@ -117,10 +120,19 @@ export default function EditServiceProtocolPage({ params }: { params?: { id?: st
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <Button
+              type="button"
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+            >
               {t('service_protocols.form.edit.submit')}
             </Button>
-            <Button variant="outline" onClick={() => router.push(`/backend/service-protocols/${id}`)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push(backHref)}
+              disabled={saveMutation.isPending}
+            >
               {t('service_protocols.form.cancel')}
             </Button>
           </div>

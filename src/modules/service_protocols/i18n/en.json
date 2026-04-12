@@ -79,5 +79,6 @@
   "service_protocols.widget.unavailable": "Protocol not available for this ticket",
   "service_protocols.widget.confirmCreate": "Create a new service protocol for this ticket?",
   "service_protocols.widget.confirmYes": "Create",
-  "service_protocols.widget.confirmNo": "Cancel"
+  "service_protocols.widget.confirmNo": "Cancel",
+  "service_protocols.widget.dialogDescription": "Fill in the work details for this service protocol."
 }
