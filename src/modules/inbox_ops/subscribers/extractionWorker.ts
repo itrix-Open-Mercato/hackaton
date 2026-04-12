@@ -300,6 +300,56 @@ export default async function handle(payload: EmailReceivedPayload, ctx: Resolve
     enrichCreateContactEmails(extractionResult.proposedActions, participantEmailMap)
     enrichDraftReplyTargets(extractionResult.draftReplies, participantEmailMap)
 
+    // Step 6b-3: Enrich create_service_ticket payloads — resolve customer_entity_id and
+    // machine_instance_id at extraction time so the sessionStorage payload is pre-filled
+    // when the user navigates to the service ticket creation form.
+    const serviceTicketEnrichmentDiscrepancies: DiscrepancyInput[] = []
+    for (const [actionIndex, action] of extractionResult.proposedActions.entries()) {
+      if (action.actionType !== 'create_service_ticket') continue
+      try {
+        const { getInboxAction } = await import('@/.mercato/generated/inbox-actions.generated')
+        const definition = getInboxAction('create_service_ticket')
+        if (!definition?.normalizePayload) continue
+
+        const parsedPayload = safeParsePayloadJson(action.payloadJson)
+
+        // Pass the extraction-worker context as the action execution context.
+        // normalizePayload only needs container.resolve('knex') and organizationId.
+        const actionCtx = {
+          em,
+          userId: SYSTEM_USER_ID,
+          tenantId: scope.tenantId,
+          organizationId: scope.organizationId,
+          container: ctx as unknown,
+          executeCommand: async <TInput, TResult>(_commandId: string, _input: TInput): Promise<TResult> => {
+            throw new Error('executeCommand not available at extraction time')
+          },
+          resolveEntityClass: <T>(_key: string): (new (...args: unknown[]) => T) | null => null,
+        }
+
+        const enriched = await definition.normalizePayload(parsedPayload, actionCtx as Parameters<typeof definition.normalizePayload>[1])
+
+        // Convert internal _discrepancies to proper DB discrepancy records.
+        // Skip unknown_contact — the global contact matching step already creates those.
+        const payloadDiscrepancies = (enriched._discrepancies as Array<{ type: string; message: string }> | undefined) ?? []
+        for (const disc of payloadDiscrepancies) {
+          if (disc.type === 'unknown_contact') continue // already covered by global contact matching
+          serviceTicketEnrichmentDiscrepancies.push({
+            actionIndex,
+            type: 'other',
+            severity: 'warning',
+            description: disc.message,
+          })
+        }
+
+        // Store the enriched payload (keep _confidence/_customer_name/_machine_label for UI display)
+        delete (enriched as Record<string, unknown>)._discrepancies
+        action.payloadJson = JSON.stringify(enriched)
+      } catch (err) {
+        console.error('[inbox_ops:extraction-worker] Service ticket payload enrichment failed:', err instanceof Error ? err.message : String(err))
+      }
+    }
+
     // Step 6c: Detect unresolved products and auto-generate create_product actions
     const productNotFoundDiscrepancies: DiscrepancyInput[] = []
     const autoProductActions: { actionType: 'create_product'; description: string; confidence: number; requiredFeature: string; payloadJson: string }[] = []
@@ -466,6 +516,9 @@ export default async function handle(payload: EmailReceivedPayload, ctx: Resolve
         createDiscrepancy(em, proposalId, allActions, offsetIndex(d), scope),
       ),
       ...enrichmentDiscrepancies.map((d) =>
+        createDiscrepancy(em, proposalId, allActions, offsetIndex(d), scope),
+      ),
+      ...serviceTicketEnrichmentDiscrepancies.map((d) =>
         createDiscrepancy(em, proposalId, allActions, offsetIndex(d), scope),
       ),
     ]

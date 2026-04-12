@@ -19,4 +19,5 @@ export const REQUIRED_FEATURES_MAP: Record<InboxActionType, string> = {
   link_contact: 'customers.people.manage',
   log_activity: 'customers.activities.manage',
   draft_reply: 'inbox_ops.replies.send',
+  create_service_ticket: 'service_tickets.create',
 } as const

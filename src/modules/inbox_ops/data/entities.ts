@@ -50,6 +50,7 @@ export type InboxProposalCategory =
   | 'shipping_update'
   | 'inquiry'
   | 'payment'
+  | 'service_request'
   | 'other'
 export type InboxActionType =
   | 'create_order'
@@ -61,6 +62,7 @@ export type InboxActionType =
   | 'link_contact'
   | 'log_activity'
   | 'draft_reply'
+  | 'create_service_ticket'
 export type InboxActionStatus = 'pending' | 'processing' | 'accepted' | 'rejected' | 'executed' | 'failed'
 export type InboxDiscrepancyType =
   | 'price_mismatch'
