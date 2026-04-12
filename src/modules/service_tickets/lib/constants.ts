@@ -3,6 +3,17 @@ import { serviceTypeSchema, ticketStatusSchema, ticketPrioritySchema } from '../
 
 export const ENTITY_TYPE = 'service_tickets:service_ticket'
 
+// Depot / office origin used for route directions and transport cost estimates.
+// Update these coordinates to match the actual company location.
+export const ORIGIN_POINT: { lat: number; lng: number } = { lat: 52.46628148098175, lng: 16.989738842580948 }
+
+// Transport cost rate in PLN per kilometre of driving distance.
+export const TRANSPORT_RATE_PLN_PER_KM = 1.5
+
+export function drivingCostPln(distanceMeters: number, ratePerKm: number): number {
+  return (distanceMeters / 1000) * ratePerKm
+}
+
 export type ServiceType = z.infer<typeof serviceTypeSchema>
 export type TicketStatus = z.infer<typeof ticketStatusSchema>
 export type TicketPriority = z.infer<typeof ticketPrioritySchema>

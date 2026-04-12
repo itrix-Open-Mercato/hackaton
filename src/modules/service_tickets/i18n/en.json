@@ -86,5 +86,9 @@
   "service_tickets.enum.priority.urgent": "Urgent",
   "service_tickets.enum.priority.critical": "Critical",
   "service_tickets.validation.contactPersonNotInCompany": "Contact person does not belong to the selected company",
-  "service_tickets.validation.contactPersonRequiresCompany": "Contact person requires a company to be selected"
+  "service_tickets.validation.contactPersonRequiresCompany": "Contact person requires a company to be selected",
+  "service_tickets.map.popup.getDirections": "Get Directions",
+  "service_tickets.map.popup.gettingDirections": "Getting directions…",
+  "service_tickets.map.popup.transportCost": "Transport cost",
+  "service_tickets.map.resetView": "Reset view"
 }
