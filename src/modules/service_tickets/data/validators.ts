@@ -58,6 +58,7 @@ export const ticketCreateSchema = z.object({
   contact_person_id: optionalUuid,
   machine_instance_id: optionalUuid,
   order_id: optionalUuid,
+  sales_channel_id: optionalUuid,
   staff_member_ids: staffMemberIdsSchema,
 })
 
@@ -79,6 +80,7 @@ export const ticketUpdateSchema = z.object({
   contact_person_id: nullableUuid,
   machine_instance_id: nullableUuid,
   order_id: nullableUuid,
+  sales_channel_id: nullableUuid,
   staff_member_ids: staffMemberIdsSchema,
 })
 

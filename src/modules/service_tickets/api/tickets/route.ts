@@ -25,6 +25,7 @@ const querySchema = z
     priority: z.string().optional(),
     customer_entity_id: z.string().uuid().optional(),
     machine_instance_id: z.string().uuid().optional(),
+    sales_channel_id: z.string().uuid().optional(),
     search: z.string().optional(),
     visit_date_from: z.string().optional(),
     visit_date_to: z.string().optional(),
@@ -90,6 +91,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'contact_person_id',
       'machine_instance_id',
       'order_id',
+      'sales_channel_id',
       'created_by_user_id',
       'tenant_id',
       'organization_id',
@@ -115,6 +117,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (q.priority) F.priority = { $in: q.priority.split(',') }
       if (q.customer_entity_id) F.customer_entity_id = q.customer_entity_id
       if (q.machine_instance_id) F.machine_instance_id = q.machine_instance_id
+      if (q.sales_channel_id) F.sales_channel_id = q.sales_channel_id
 
       if (q.search) {
         const escaped = escapeLikePattern(q.search)
@@ -173,6 +176,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         contactPersonId: nullable('contactPersonId', 'contact_person_id'),
         machineInstanceId: nullable('machineInstanceId', 'machine_instance_id'),
         orderId: nullable('orderId', 'order_id'),
+        salesChannelId: nullable('salesChannelId', 'sales_channel_id'),
         createdByUserId: nullable('createdByUserId', 'created_by_user_id'),
         tenantId: (source.tenantId ?? source.tenant_id ?? '') as string,
         organizationId: (source.organizationId ?? source.organization_id ?? '') as string,

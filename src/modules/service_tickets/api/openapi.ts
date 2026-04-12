@@ -35,6 +35,7 @@ export const ticketListItemSchema = z
     contactPersonId: z.string().nullable().optional(),
     machineInstanceId: z.string().nullable().optional(),
     orderId: z.string().nullable().optional(),
+    salesChannelId: z.string().nullable().optional(),
     staffMemberIds: z.array(z.string().uuid()).optional(),
     createdByUserId: z.string().nullable().optional(),
     tenantId: z.string().nullable().optional(),

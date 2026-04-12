@@ -11,6 +11,8 @@ import { buildTicketFields, buildTicketGroups, createEmptyTicketFormValues, type
 import { ENTITY_TYPE } from '../../../lib/constants'
 import { readAndConsumeInboxDraft, mergeInboxPrefill, markInboxActionExecuted, type InboxDraftData } from '../../../lib/inbox-prefill'
 
+type TicketFormStringKey = Exclude<keyof TicketFormValues, 'staff_member_ids'>
+
 function InboxPrefillBanner({ draft }: { draft: InboxDraftData }) {
   const t = useT()
   return (
@@ -45,7 +47,7 @@ export default function CreateServiceTicketPage() {
       ? mergeInboxPrefill(createEmptyTicketFormValues(), inboxDraft.payload)
       : createEmptyTicketFormValues()
     if (!searchParams) return values
-    const setString = (key: keyof TicketFormValues) => {
+    const setString = (key: TicketFormStringKey) => {
       const value = searchParams.get(key)
       if (value != null) values[key] = value
     }
@@ -56,8 +58,13 @@ export default function CreateServiceTicketPage() {
     setString('address')
     setString('customer_entity_id')
     setString('contact_person_id')
-    setString('machine_asset_id')
+    setString('machine_instance_id')
     setString('order_id')
+    setString('sales_channel_id')
+    const legacyMachineAssetId = searchParams.get('machine_asset_id')
+    if (!values.machine_instance_id && legacyMachineAssetId != null) {
+      values.machine_instance_id = legacyMachineAssetId
+    }
     return values
   }, [inboxDraft, searchParams])
 

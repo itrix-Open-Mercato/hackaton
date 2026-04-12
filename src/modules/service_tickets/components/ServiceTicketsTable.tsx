@@ -15,6 +15,7 @@ import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/u
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { ServiceTicketListItem } from '../types'
 import { searchCompanies } from './customerOptions'
+import { searchSalesChannels } from './salesChannelOptions'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
@@ -201,6 +202,12 @@ export default function ServiceTicketsTable({ filters }: { filters: TicketFilter
                 return []
               }
             },
+          },
+          {
+            id: 'sales_channel_id',
+            label: t('service_tickets.table.filters.salesChannel'),
+            type: 'combobox',
+            loadOptions: async (query?: string) => searchSalesChannels(query ?? ''),
           },
         ]}
         filterValues={values}

@@ -18,6 +18,7 @@ export type ServiceTicketListItem = {
   contactPersonId?: string | null
   machineInstanceId?: string | null
   orderId?: string | null
+  salesChannelId?: string | null
   staffMemberIds?: string[]
   createdByUserId?: string | null
   tenantId?: string

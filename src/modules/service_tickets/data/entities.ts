@@ -15,6 +15,7 @@ import type { ServiceType, TicketStatus, TicketPriority } from '../lib/constants
 @Index({ name: 'st_customer_idx', properties: ['customerEntityId'] })
 @Index({ name: 'st_contact_person_idx', properties: ['contactPersonId'] })
 @Index({ name: 'st_machine_idx', properties: ['machineInstanceId'] })
+@Index({ name: 'st_sales_channel_idx', properties: ['salesChannelId'] })
 @Unique({ name: 'st_ticket_number_unique', properties: ['ticketNumber', 'tenantId', 'organizationId'] })
 export class ServiceTicket {
   [OptionalProps]?: 'status' | 'priority' | 'createdAt' | 'updatedAt' | 'deletedAt'
@@ -78,6 +79,9 @@ export class ServiceTicket {
 
   @Property({ name: 'order_id', type: 'uuid', nullable: true })
   orderId?: string | null
+
+  @Property({ name: 'sales_channel_id', type: 'uuid', nullable: true })
+  salesChannelId?: string | null
 
   @Property({ name: 'created_by_user_id', type: 'uuid', nullable: true })
   createdByUserId?: string | null

@@ -17,10 +17,15 @@ export const createServiceTicketPayloadSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   address: z.string().optional(),
   contact_person_id: z.string().uuid().optional(),
+  sales_channel_id: z.string().uuid().optional(),
+  channelId: z.string().uuid().optional(),
   _confidence: z.number().min(0).max(1).optional(),
   _discrepancies: z.array(discrepancySchema).optional(),
   _customer_name: z.string().optional(),
   _machine_label: z.string().optional(),
-})
+}).transform((payload) => ({
+  ...payload,
+  sales_channel_id: payload.sales_channel_id ?? payload.channelId,
+}))
 
 export type CreateServiceTicketPayload = z.infer<typeof createServiceTicketPayloadSchema>
