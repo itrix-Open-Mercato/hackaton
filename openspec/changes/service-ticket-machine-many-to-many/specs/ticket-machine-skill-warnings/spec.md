@@ -39,4 +39,3 @@ The system SHALL allow ticket queries to filter by a required skill or certifica
 #### Scenario: Filter tickets by required skill code
 - **WHEN** a client requests service tickets filtered by a required skill code
 - **THEN** the system returns tickets whose derived requirement set contains that skill code
-

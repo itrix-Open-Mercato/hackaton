@@ -12,4 +12,3 @@ export function resolveOptionalEventBus(container: AwilixContainer): EventBus | 
     return null
   }
 }
-

@@ -39,4 +39,3 @@ The system SHALL allow ticket queries to return service tickets associated with 
 #### Scenario: Filter tickets by machine instance
 - **WHEN** a client requests service tickets with a machine filter for a specific `machineInstanceId`
 - **THEN** the system returns tickets that contain an active linked machine with that identifier
-

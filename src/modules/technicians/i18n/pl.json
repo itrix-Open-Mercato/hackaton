@@ -1,5 +1,7 @@
 {
   "technicians.page.title": "Serwisanci",
+  "technicians.detail.title": "Serwisant",
+  "technicians.detail.edit": "Edytuj",
   "technicians.nav.group": "Serwis",
   "technicians.table.title": "Serwisanci",
   "technicians.table.column.staffMemberId": "Pracownik",

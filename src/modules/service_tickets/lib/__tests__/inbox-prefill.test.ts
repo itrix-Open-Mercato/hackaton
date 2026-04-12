@@ -2,6 +2,13 @@
  * @jest-environment jsdom
  */
 import { readAndConsumeInboxDraft, mergeInboxPrefill, markInboxActionExecuted } from '../inbox-prefill'
+import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+
+jest.mock('@open-mercato/ui/backend/utils/apiCall', () => ({
+  apiCall: jest.fn(),
+}), { virtual: true })
+
+const mockApiCall = apiCall as jest.MockedFunction<typeof apiCall>
 
 const STORAGE_KEY = 'inbox_ops.serviceTicketDraft'
 
@@ -21,6 +28,7 @@ const defaults = {
   contact_person_id: '',
   machine_instance_id: '',
   order_id: '',
+  sales_channel_id: '',
   staff_member_ids: [] as string[],
   machine_service_type_ids: [] as string[],
 }
@@ -60,6 +68,7 @@ describe('mergeInboxPrefill', () => {
       customer_entity_id: 'cust-1',
       contact_person_id: 'person-1',
       machine_instance_id: 'mach-1',
+      sales_channel_id: 'channel-1',
       address: '123 Main St',
     })
     expect(result.service_type).toBe('maintenance')
@@ -68,7 +77,13 @@ describe('mergeInboxPrefill', () => {
     expect(result.customer_entity_id).toBe('cust-1')
     expect(result.contact_person_id).toBe('person-1')
     expect(result.machine_instance_id).toBe('mach-1')
+    expect(result.sales_channel_id).toBe('channel-1')
     expect(result.address).toBe('123 Main St')
+  })
+
+  it('maps legacy channelId to sales_channel_id', () => {
+    const result = mergeInboxPrefill(defaults, { channelId: 'channel-2' })
+    expect(result.sales_channel_id).toBe('channel-2')
   })
 })
 
@@ -104,18 +119,16 @@ describe('readAndConsumeInboxDraft', () => {
 })
 
 describe('markInboxActionExecuted', () => {
-  const originalFetch = global.fetch
-
   afterEach(() => {
-    global.fetch = originalFetch
+    mockApiCall.mockReset()
   })
 
   // 18.1 Successful PATCH
   it('calls PATCH with correct params on success', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: true })
+    mockApiCall.mockResolvedValue({ ok: true } as Awaited<ReturnType<typeof apiCall>>)
     const result = await markInboxActionExecuted('prop-1', 'act-1', 'ticket-123')
     expect(result).toBe(true)
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(mockApiCall).toHaveBeenCalledWith(
       '/api/inbox_ops/proposals/prop-1/actions/act-1',
       expect.objectContaining({
         method: 'PATCH',
@@ -132,22 +145,22 @@ describe('markInboxActionExecuted', () => {
 
   // 18.3 PATCH failure returns false
   it('returns false on network error', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('Network error'))
+    mockApiCall.mockRejectedValue(new Error('Network error'))
     const result = await markInboxActionExecuted('prop-1', 'act-1', 'ticket-123')
     expect(result).toBe(false)
   })
 
   it('returns false on non-ok response', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 })
+    mockApiCall.mockResolvedValue({ ok: false, status: 500 } as Awaited<ReturnType<typeof apiCall>>)
     const result = await markInboxActionExecuted('prop-1', 'act-1', 'ticket-123')
     expect(result).toBe(false)
   })
 
   // 18.4 PATCH includes correct IDs
   it('includes correct proposal and action IDs in URL', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: true })
+    mockApiCall.mockResolvedValue({ ok: true } as Awaited<ReturnType<typeof apiCall>>)
     await markInboxActionExecuted('my-proposal', 'my-action', 'new-ticket')
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(mockApiCall).toHaveBeenCalledWith(
       '/api/inbox_ops/proposals/my-proposal/actions/my-action',
       expect.anything(),
     )

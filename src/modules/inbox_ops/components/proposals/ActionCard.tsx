@@ -17,6 +17,7 @@ import {
   Link2,
   Activity,
   ShoppingBag,
+  Wrench,
 } from 'lucide-react'
 import type { ActionDetail, DiscrepancyDetail } from './types'
 import { hasContactNameIssue } from '../../lib/contactValidation'
@@ -85,6 +86,7 @@ const ACTION_TYPE_ICONS: Record<string, React.ElementType> = {
   link_contact: Link2,
   log_activity: Activity,
   draft_reply: MessageSquare,
+  create_service_ticket: Wrench,
 }
 
 export function useActionTypeLabels(): Record<string, string> {
@@ -99,6 +101,7 @@ export function useActionTypeLabels(): Record<string, string> {
     link_contact: t('inbox_ops.action_type.link_contact', 'Link Contact'),
     log_activity: t('inbox_ops.action_type.log_activity', 'Log Activity'),
     draft_reply: t('inbox_ops.action_type.draft_reply', 'Draft Reply'),
+    create_service_ticket: t('inbox_ops.action_type.create_service_ticket', 'Create Service Ticket'),
   }
 }
 
@@ -114,6 +117,56 @@ export function ConfidenceBadge({ value }: { value: string }) {
       <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
         <div className={`h-full ${bgColor} rounded-full`} style={{ width: `${width}%` }} />
       </div>
+    </div>
+  )
+}
+
+function ServiceTicketPreview({ payload }: { payload: Record<string, unknown> }) {
+  const t = useT()
+  const serviceType = (payload.service_type as string) || ''
+  const priority = (payload.priority as string) || ''
+  const customerName = (payload._customer_name as string) || ''
+  const machineLabel = (payload._machine_label as string) || ''
+  const address = (payload.address as string) || ''
+
+  if (!serviceType && !customerName && !machineLabel) return null
+
+  return (
+    <div className="mb-3 text-xs text-muted-foreground space-y-1">
+      {customerName && (
+        <div className="flex gap-1">
+          <span>{t('inbox_ops.preview.customer', 'Customer')}:</span>
+          <span className="text-foreground font-medium">{customerName}</span>
+        </div>
+      )}
+      {machineLabel && (
+        <div className="flex gap-1">
+          <span>{t('inbox_ops.preview.machine', 'Machine')}:</span>
+          <span className="text-foreground font-medium">{machineLabel}</span>
+        </div>
+      )}
+      {(serviceType || priority) && (
+        <div className="flex gap-2">
+          {serviceType && (
+            <div className="flex gap-1">
+              <span>{t('inbox_ops.preview.serviceType', 'Type')}:</span>
+              <span>{serviceType}</span>
+            </div>
+          )}
+          {priority && priority !== 'normal' && (
+            <div className="flex gap-1">
+              <span>{t('inbox_ops.preview.priority', 'Priority')}:</span>
+              <span className={priority === 'critical' ? 'text-red-600 font-medium' : 'text-yellow-600 font-medium'}>{priority}</span>
+            </div>
+          )}
+        </div>
+      )}
+      {address && (
+        <div className="flex gap-1">
+          <span>{t('inbox_ops.preview.address', 'Address')}:</span>
+          <span>{address}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -341,6 +394,10 @@ export function ActionCard({
 
       {action.actionType === 'create_product' && (
         <ProductPreview payload={action.payload} />
+      )}
+
+      {action.actionType === 'create_service_ticket' && (
+        <ServiceTicketPreview payload={action.payload} />
       )}
 
       {actionDiscrepancies.length > 0 && (

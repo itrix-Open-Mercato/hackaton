@@ -38,6 +38,30 @@ export async function validateContactPersonBelongsToCompany(
   }
 }
 
+async function validateSalesChannelExists(
+  salesChannelId: string,
+  em: EntityManager,
+  tenantId: string,
+  organizationId: string,
+): Promise<void> {
+  const knex = (em as any).getConnection().getKnex()
+  const row = await knex('sales_channels')
+    .select('id')
+    .where({
+      id: salesChannelId,
+      tenant_id: tenantId,
+      organization_id: organizationId,
+    })
+    .whereNull('deleted_at')
+    .first()
+  if (!row) {
+    throw new CrudHttpError(422, {
+      error: 'Sales channel does not exist in the current organization',
+      field: 'sales_channel_id',
+    })
+  }
+}
+
 export const ticketCrudEvents: CrudEventsConfig<ServiceTicket> = {
   module: 'service_tickets',
   entity: 'ticket',
@@ -105,6 +129,9 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
         field: 'contact_person_id',
       })
     }
+    if (parsed.sales_channel_id) {
+      await validateSalesChannelExists(parsed.sales_channel_id, em, scope.tenantId, scope.organizationId)
+    }
 
     let ticket: ServiceTicket | null = null
     for (let attempt = 0; attempt < MAX_TICKET_NUMBER_RETRIES; attempt++) {
@@ -124,6 +151,7 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
             contactPersonId: parsed.customer_entity_id ? parsed.contact_person_id ?? null : null,
             machineInstanceId: parsed.machine_instance_id ?? null,
             orderId: parsed.order_id ?? null,
+            salesChannelId: parsed.sales_channel_id ?? null,
             createdByUserId: ctx.auth?.userId ?? null,
             tenantId: scope.tenantId,
             organizationId: scope.organizationId,
@@ -253,6 +281,9 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
         field: 'contact_person_id',
       })
     }
+    if (parsed.sales_channel_id) {
+      await validateSalesChannelExists(parsed.sales_channel_id, em, scope.tenantId, scope.organizationId)
+    }
 
     const oldVisitDate = existing.visitDate
     const oldStatus = existing.status
@@ -289,6 +320,7 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
         }
         if (parsed.machine_instance_id !== undefined) entity.machineInstanceId = parsed.machine_instance_id
         if (parsed.order_id !== undefined) entity.orderId = parsed.order_id
+        if (parsed.sales_channel_id !== undefined) entity.salesChannelId = parsed.sales_channel_id
 
         // Clear location when address is explicitly nulled
         if (parsed.address === null) {

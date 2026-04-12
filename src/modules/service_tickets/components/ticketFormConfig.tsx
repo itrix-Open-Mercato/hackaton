@@ -5,6 +5,7 @@ import type { CrudField, CrudFormGroup, CrudCustomFieldRenderProps } from '@open
 import type { ServiceTicketListItem } from '../types'
 import CustomerCascadeSelect from './CustomerCascadeSelect'
 import MachineCascadeSelect from './MachineCascadeSelect'
+import { searchSalesChannels } from './salesChannelOptions'
 import ServiceTypePicker from './ServiceTypePicker'
 import {
   PRIORITY_I18N_KEYS,
@@ -98,6 +99,7 @@ export type TicketFormValues = {
   machine_instance_id: string
   order_id: string
   staff_member_ids: string[]
+  sales_channel_id: string
   machine_service_type_ids: string[]
 }
 
@@ -155,6 +157,14 @@ export function buildTicketFields(
       label: t('service_tickets.form.fields.orderId.label'),
       type: 'text',
       placeholder: t('service_tickets.form.fields.orderId.placeholder'),
+    },
+    {
+      id: 'sales_channel_id',
+      label: t('service_tickets.form.fields.salesChannelId.label'),
+      type: 'combobox',
+      placeholder: t('service_tickets.form.fields.salesChannelId.placeholder'),
+      loadOptions: (query?: string) => searchSalesChannels(query ?? ''),
+      allowCustomValues: false,
     },
   ]
 
@@ -233,7 +243,7 @@ export function buildTicketGroups(
           />
         </div>
       ),
-      fields: ['order_id'],
+      fields: ['order_id', 'sales_channel_id'],
     },
   ]
 }
@@ -255,6 +265,7 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     machine_instance_id: '',
     order_id: '',
     staff_member_ids: [],
+    sales_channel_id: '',
     machine_service_type_ids: [],
   }
 }
@@ -271,6 +282,7 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
   const lat = pick<number>('latitude', 'latitude')
   const lng = pick<number>('longitude', 'longitude')
   const staffMemberIds = pick<string[]>('staffMemberIds', 'staff_member_ids')
+  const salesChannelId = pick<string>('salesChannelId', 'sales_channel_id')
 
   return {
     id: item.id,
@@ -288,6 +300,7 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
     machine_instance_id: pick<string>('machineInstanceId', 'machine_instance_id') ?? '',
     order_id: pick<string>('orderId', 'order_id') ?? '',
     staff_member_ids: Array.isArray(staffMemberIds) ? staffMemberIds : [],
+    sales_channel_id: salesChannelId ?? '',
     machine_service_type_ids: Array.isArray(pick<string[]>('machineServiceTypeIds', 'machine_service_type_ids'))
       ? pick<string[]>('machineServiceTypeIds', 'machine_service_type_ids')!
       : [],

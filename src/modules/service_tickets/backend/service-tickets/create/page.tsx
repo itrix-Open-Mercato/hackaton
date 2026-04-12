@@ -4,11 +4,14 @@ import { useSearchParams } from 'next/navigation'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { CrudForm } from '@open-mercato/ui/backend/CrudForm'
 import { createCrud } from '@open-mercato/ui/backend/utils/crud'
+import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { buildTicketFields, buildTicketGroups, createEmptyTicketFormValues, type TicketFormValues } from '../../../components/ticketFormConfig'
 import { ENTITY_TYPE } from '../../../lib/constants'
 import { readAndConsumeInboxDraft, mergeInboxPrefill, markInboxActionExecuted, type InboxDraftData } from '../../../lib/inbox-prefill'
+
+type TicketFormStringKey = Exclude<keyof TicketFormValues, 'staff_member_ids'>
 
 function InboxPrefillBanner({ draft }: { draft: InboxDraftData }) {
   const t = useT()
@@ -36,14 +39,34 @@ export default function CreateServiceTicketPage() {
     return readAndConsumeInboxDraft()
   })
 
-  const initialValues = React.useMemo(() => {
-    const defaults = createEmptyTicketFormValues()
-    if (!inboxDraft?.payload) return defaults
-    return mergeInboxPrefill(defaults, inboxDraft.payload)
-  }, [inboxDraft])
-
   const fields = React.useMemo(() => buildTicketFields(t, { includeStatus: false }), [t])
   const groups = React.useMemo(() => buildTicketGroups(t, { includeStatus: false }), [t])
+  const phoneCallId = searchParams?.get('phone_call_id') ?? ''
+  const initialValues = React.useMemo<TicketFormValues>(() => {
+    const values = inboxDraft?.payload
+      ? mergeInboxPrefill(createEmptyTicketFormValues(), inboxDraft.payload)
+      : createEmptyTicketFormValues()
+    if (!searchParams) return values
+    const setString = (key: TicketFormStringKey) => {
+      const value = searchParams.get(key)
+      if (value != null) values[key] = value
+    }
+    setString('service_type')
+    setString('priority')
+    setString('description')
+    setString('visit_date')
+    setString('address')
+    setString('customer_entity_id')
+    setString('contact_person_id')
+    setString('machine_instance_id')
+    setString('order_id')
+    setString('sales_channel_id')
+    const legacyMachineAssetId = searchParams.get('machine_asset_id')
+    if (!values.machine_instance_id && legacyMachineAssetId != null) {
+      values.machine_instance_id = legacyMachineAssetId
+    }
+    return values
+  }, [inboxDraft, searchParams])
 
   const successRedirect = React.useMemo(
     () => `/backend/service-tickets?flash=${encodeURIComponent(t('service_tickets.form.flash.created'))}&type=success`,
@@ -51,11 +74,18 @@ export default function CreateServiceTicketPage() {
   )
 
   const handleSubmit = React.useCallback(async (values: TicketFormValues) => {
-    const result = await createCrud('service_tickets/tickets', values)
+    const response = await createCrud<{ id?: string }>('service_tickets/tickets', values)
+    const ticketId = response.result?.id
 
-    // Mark inbox action as executed if this was a prefill
+    if (phoneCallId && ticketId) {
+      await apiCallOrThrow(`/api/phone_calls/calls/${phoneCallId}/link-service-ticket`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ service_ticket_id: ticketId, source_action: 'create_from_call' }),
+      })
+    }
+
     if (fromInboxAction && inboxDraft) {
-      const ticketId = (result as any)?.id
       if (ticketId) {
         const ok = await markInboxActionExecuted(inboxDraft.proposalId, inboxDraft.actionId, ticketId)
         if (!ok) {
@@ -63,7 +93,7 @@ export default function CreateServiceTicketPage() {
         }
       }
     }
-  }, [fromInboxAction, inboxDraft, t])
+  }, [fromInboxAction, inboxDraft, phoneCallId, t])
 
   return (
     <Page>

@@ -43,4 +43,3 @@ The system SHALL expose documentation shortcuts for each linked machine based on
 #### Scenario: Missing documentation returns an empty machine-specific list
 - **WHEN** a linked machine has no documentation references in its catalog context
 - **THEN** the ticket response returns an empty documentation collection for that linked machine
-

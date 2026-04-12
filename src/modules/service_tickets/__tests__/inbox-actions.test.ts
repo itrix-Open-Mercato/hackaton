@@ -713,3 +713,104 @@ describe('confidence in normalized payload', () => {
     expect(result._confidence).toBeCloseTo(0.3)
   })
 })
+
+// ============================================
+// Inbox extraction-time enrichment contract
+// ============================================
+
+describe('normalizePayload: enrichment contract for extraction-time use', () => {
+  // These tests verify that normalizePayload returns data in the shape expected
+  // by the extraction worker step 6b-3 so service ticket payloads stored in DB
+  // already contain resolved customer_entity_id / machine_instance_id.
+
+  it('returns _discrepancies array for unresolved customer (extracted at extraction time)', async () => {
+    const knex = createKnexMock({
+      customer_entities: [],
+      customer_companies: [],
+    })
+    const mockKnex = (table: string) => {
+      if (table === 'customer_entities') {
+        return {
+          select: () => ({
+            whereRaw: () => ({
+              where: () => ({
+                whereNull: () => ({ first: () => Promise.resolve(null) }),
+              }),
+            }),
+          }),
+        }
+      }
+      if (table === 'customer_companies') {
+        return {
+          join: () => ({
+            select: () => ({
+              whereRaw: () => ({
+                where: () => ({
+                  whereNull: () => ({ then: (resolve: any) => resolve([]) }),
+                }),
+              }),
+            }),
+          }),
+        }
+      }
+      return knex(table)
+    }
+    const ctx = createCtx(mockKnex)
+    const result = await normalizePayload({
+      description: 'broken machine',
+      customer_email: 'unknown@nowhere.xyz',
+      _llm_confidence: 0.7,
+    }, ctx)
+
+    // customer_entity_id should NOT be set for unresolved customer
+    expect(result.customer_entity_id).toBeUndefined()
+
+    // _discrepancies should be present and have an entry for unknown_contact
+    const discrepancies = result._discrepancies as Array<{ type: string; message: string }> | undefined
+    expect(Array.isArray(discrepancies)).toBe(true)
+    expect(discrepancies!.some((d) => d.type === 'unknown_contact')).toBe(true)
+  })
+
+  it('sets customer_entity_id and _customer_name when email matches, _discrepancies is empty', async () => {
+    const knex = createKnexMock({
+      customer_entities: [
+        { id: 'cust-resolved', primary_email: 'client@corp.com', display_name: 'Corp Ltd', organization_id: 'org-1', deleted_at: null },
+      ],
+    })
+    const ctx = createCtx(knex)
+    const result = await normalizePayload({
+      description: 'machine issue',
+      customer_email: 'client@corp.com',
+      _llm_confidence: 0.8,
+    }, ctx)
+
+    expect(result.customer_entity_id).toBe('cust-resolved')
+    expect(result._customer_name).toBe('Corp Ltd')
+
+    const discrepancies = result._discrepancies as Array<{ type: string; message: string }> | undefined
+    expect(!discrepancies || discrepancies.length === 0).toBe(true)
+  })
+
+  it('preserves machine_hints in payload for downstream resolution', async () => {
+    const knex = createKnexMock({
+      customer_entities: [
+        { id: 'cust-1', primary_email: 'tech@acme.com', display_name: 'Acme', organization_id: 'org-1', deleted_at: null },
+      ],
+      customer_companies: [{ id: 'company-1', entity_id: 'cust-1' }],
+      machine_instances: [
+        { id: 'mach-1', serial_number: 'SN-001', instance_code: 'MC-001', customer_company_id: 'company-1', organization_id: 'org-1', is_active: true },
+      ],
+    })
+    const ctx = createCtx(knex)
+    const result = await normalizePayload({
+      description: 'maintenance request',
+      customer_email: 'tech@acme.com',
+      machine_hints: ['SN-001'],
+      _llm_confidence: 0.9,
+    }, ctx)
+
+    expect(result.customer_entity_id).toBe('cust-1')
+    expect(result.machine_instance_id).toBe('mach-1')
+    expect(result._machine_label).toBe('MC-001 (SN-001)')
+  })
+})
