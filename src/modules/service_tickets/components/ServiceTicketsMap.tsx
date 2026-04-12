@@ -2,15 +2,18 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { GoogleMap, Marker, InfoWindow, GoogleMarkerClusterer, useJsApiLoader } from '@react-google-maps/api'
+import { GoogleMap, Marker, InfoWindow, GoogleMarkerClusterer, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { ServiceTicketMapItem, TicketMapResponse } from '../types'
+import { ORIGIN_POINT, TRANSPORT_RATE_PLN_PER_KM, drivingCostPln } from '../lib/constants'
 
 // Poland centroid — fallback when no markers exist
 const POLAND_CENTER = { lat: 52.07, lng: 19.48 }
 const POLAND_ZOOM = 6
 const MAP_CONTAINER_STYLE = { width: '100%', height: '384px' }
+
+type RouteCost = { distanceMeters: number; costPln: number }
 
 function buildClusterIconUrl(count: number): string {
   const label = String(count)
@@ -83,9 +86,12 @@ function formatVisitDate(value: string, locale?: string): { date: string; time: 
   }
 }
 
-function TicketInfoWindow({ item, onClose, t }: {
+function TicketInfoWindow({ item, onClose, onGetDirections, routeCost, isLoadingRoute, t }: {
   item: ServiceTicketMapItem
   onClose: () => void
+  onGetDirections?: () => void
+  routeCost?: RouteCost | null
+  isLoadingRoute?: boolean
   t: (key: string, fallback?: string) => string
 }) {
   const locale = typeof navigator !== 'undefined' ? navigator.language : undefined
@@ -149,14 +155,39 @@ function TicketInfoWindow({ item, onClose, t }: {
               </div>
             </div>
           )}
+
+          {routeCost && (
+            <div className="flex items-start justify-between gap-3 border-t border-slate-200 pt-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                {t('service_tickets.map.popup.transportCost', 'Transport cost')}
+              </span>
+              <div className="text-right text-xs font-semibold text-slate-900">
+                {(routeCost.distanceMeters / 1000).toFixed(1)} km · {routeCost.costPln.toFixed(2)} PLN
+              </div>
+            </div>
+          )}
         </div>
 
-        <Link
-          href={`/backend/service-tickets/${item.id}/edit`}
-          className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white no-underline transition hover:bg-slate-800"
-        >
-          {t('service_tickets.map.popup.open', 'Open ticket')}
-        </Link>
+        <div className="mt-3 flex flex-col gap-2">
+          <Link
+            href={`/backend/service-tickets/${item.id}/edit`}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white no-underline transition hover:bg-slate-800"
+          >
+            {t('service_tickets.map.popup.open', 'Open ticket')}
+          </Link>
+          {onGetDirections && (
+            <button
+              type="button"
+              disabled={isLoadingRoute}
+              onClick={onGetDirections}
+              className="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+            >
+              {isLoadingRoute
+                ? t('service_tickets.map.popup.gettingDirections', 'Getting directions…')
+                : t('service_tickets.map.popup.getDirections', 'Get Directions')}
+            </button>
+          )}
+        </div>
       </div>
     </InfoWindow>
   )
@@ -167,6 +198,10 @@ export default function ServiceTicketsMap({ filterParams }: { filterParams: stri
   const scopeVersion = useOrganizationScopeVersion()
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const [map, setMap] = React.useState<google.maps.Map | null>(null)
+  const [activeRoute, setActiveRoute] = React.useState<google.maps.DirectionsResult | null>(null)
+  const [routeTargetId, setRouteTargetId] = React.useState<string | null>(null)
+  const [routeCost, setRouteCost] = React.useState<RouteCost | null>(null)
+  const [isLoadingRoute, setIsLoadingRoute] = React.useState(false)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'service-tickets-google-map',
@@ -178,15 +213,56 @@ export default function ServiceTicketsMap({ filterParams }: { filterParams: stri
     queryFn: () => fetchMapData(filterParams),
   })
 
-  // Fit bounds whenever markers change
+  // Fit bounds to all markers — skip when a route is active to avoid overriding route viewport
   React.useEffect(() => {
-    if (!map || !data?.items.length) return
+    if (!map || !data?.items.length || activeRoute) return
     const bounds = new window.google.maps.LatLngBounds()
     data.items.forEach((item) => bounds.extend({ lat: item.latitude, lng: item.longitude }))
     map.fitBounds(bounds)
+  }, [map, data?.items, activeRoute])
+
+  const handleGetDirections = React.useCallback((item: ServiceTicketMapItem) => {
+    if (!window.google?.maps) return
+    setIsLoadingRoute(true)
+    const service = new window.google.maps.DirectionsService()
+    service.route(
+      {
+        origin: ORIGIN_POINT,
+        destination: { lat: item.latitude, lng: item.longitude },
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        setIsLoadingRoute(false)
+        if (status === window.google.maps.DirectionsStatus.OK && result) {
+          const distanceMeters = result.routes[0]?.legs[0]?.distance?.value ?? 0
+          setActiveRoute(result)
+          setRouteTargetId(item.id)
+          setRouteCost({
+            distanceMeters,
+            costPln: drivingCostPln(distanceMeters, TRANSPORT_RATE_PLN_PER_KM),
+          })
+        } else {
+          // surface error without crashing — flash is only available in client context
+          console.error('Directions request failed:', status)
+        }
+      },
+    )
+  }, [])
+
+  const handleResetView = React.useCallback(() => {
+    setActiveRoute(null)
+    setRouteTargetId(null)
+    setRouteCost(null)
+    setSelectedId(null)
+    if (map && data?.items.length) {
+      const bounds = new window.google.maps.LatLngBounds()
+      data.items.forEach((item) => bounds.extend({ lat: item.latitude, lng: item.longitude }))
+      map.fitBounds(bounds)
+    }
   }, [map, data?.items])
 
-  const selectedItem = data?.items.find((i) => i.id === selectedId) ?? null
+  // While a route is active, keep showing the popover for the route target even if selectedId was cleared
+  const selectedItem = data?.items.find((i) => i.id === (selectedId ?? routeTargetId)) ?? null
   const markerIcon = React.useMemo<google.maps.Icon | undefined>(() => {
     if (!isLoaded || typeof window === 'undefined' || !window.google?.maps) return undefined
 
@@ -240,8 +316,22 @@ export default function ServiceTicketsMap({ filterParams }: { filterParams: stri
 
   return (
     <div className="mt-4 rounded-md border overflow-hidden">
-      <div className="px-3 py-2 text-sm font-medium border-b bg-muted/30">
-        {t('service_tickets.map.title', 'Ticket locations')}
+      <div className="px-3 py-2 text-sm font-medium border-b bg-muted/30 flex items-center justify-between gap-3">
+        <span>{t('service_tickets.map.title', 'Ticket locations')}</span>
+        {activeRoute && routeCost && (
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {(routeCost.distanceMeters / 1000).toFixed(1)} km · <strong>{routeCost.costPln.toFixed(2)} PLN</strong>
+            </span>
+            <button
+              type="button"
+              onClick={handleResetView}
+              className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+            >
+              {t('service_tickets.map.resetView', 'Reset view')}
+            </button>
+          </div>
+        )}
       </div>
 
       {!isLoaded && (
@@ -277,26 +367,36 @@ export default function ServiceTicketsMap({ filterParams }: { filterParams: stri
               onUnmount={() => setMap(null)}
               onClick={() => setSelectedId(null)}
             >
-              <GoogleMarkerClusterer options={clusterOptions}>
-                {(clusterer) => (
-                  <>
-                    {data.items.map((item) => (
-                      <Marker
-                        key={item.id}
-                        clusterer={clusterer}
-                        position={{ lat: item.latitude, lng: item.longitude }}
-                        title={item.ticketNumber}
-                        icon={markerIcon}
-                        onClick={() => setSelectedId(item.id)}
-                      />
-                    ))}
-                  </>
-                )}
-              </GoogleMarkerClusterer>
+              {activeRoute && (
+                <DirectionsRenderer directions={activeRoute} />
+              )}
+
+              {!activeRoute && (
+                <GoogleMarkerClusterer options={clusterOptions}>
+                  {(clusterer) => (
+                    <>
+                      {data.items.map((item) => (
+                        <Marker
+                          key={item.id}
+                          clusterer={clusterer}
+                          position={{ lat: item.latitude, lng: item.longitude }}
+                          title={item.ticketNumber}
+                          icon={markerIcon}
+                          onClick={() => setSelectedId(item.id)}
+                        />
+                      ))}
+                    </>
+                  )}
+                </GoogleMarkerClusterer>
+              )}
+
               {selectedItem && (
                 <TicketInfoWindow
                   item={selectedItem}
                   onClose={() => setSelectedId(null)}
+                  onGetDirections={() => handleGetDirections(selectedItem)}
+                  routeCost={routeTargetId === selectedItem.id ? routeCost : null}
+                  isLoadingRoute={isLoadingRoute}
                   t={t}
                 />
               )}
