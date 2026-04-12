@@ -46,6 +46,10 @@ jest.mock('../MachineCascadeSelect', () => ({
   ),
 }))
 
+jest.mock('../salesChannelOptions', () => ({
+  searchSalesChannels: jest.fn().mockResolvedValue([]),
+}))
+
 const t = (key: string) => key
 
 describe('ticketFormConfig', () => {
@@ -63,7 +67,7 @@ describe('ticketFormConfig', () => {
     const linksGroup = groups.find((group) => group.id === 'links')
 
     expect(linksGroup).toBeDefined()
-    expect(linksGroup?.fields).toEqual(['order_id'])
+    expect(linksGroup?.fields).toEqual(['order_id', 'sales_channel_id'])
 
     if (!linksGroup?.component) {
       throw new Error('Expected links group component')
@@ -109,6 +113,7 @@ describe('ticketFormConfig', () => {
       contact_person_id: '',
       machine_instance_id: '',
       order_id: '',
+      sales_channel_id: '',
       staff_member_ids: [],
     })
 
@@ -127,6 +132,7 @@ describe('ticketFormConfig', () => {
         contactPersonId: 'person-1',
         machineInstanceId: 'machine-1',
         orderId: 'order-1',
+        salesChannelId: 'channel-1',
         staffMemberIds: ['staff-1', 'staff-2'],
       }),
     ).toEqual({
@@ -144,6 +150,7 @@ describe('ticketFormConfig', () => {
       contact_person_id: 'person-1',
       machine_instance_id: 'machine-1',
       order_id: 'order-1',
+      sales_channel_id: 'channel-1',
       staff_member_ids: ['staff-1', 'staff-2'],
     })
   })

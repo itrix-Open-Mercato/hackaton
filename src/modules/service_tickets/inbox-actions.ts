@@ -120,16 +120,10 @@ async function resolveMachine(
 
   // Fetch active machines for this customer's company
   const machines = await knex('machine_instances')
-    .select(
-      'machine_instances.id',
-      'machine_instances.serial_number',
-      'machine_instances.instance_code',
-      'machine_instances.catalog_product_id',
-      'machine_instances.site_name',
-    )
-    .where('machine_instances.customer_company_id', company.id)
-    .where('machine_instances.organization_id', organizationId)
-    .where('machine_instances.is_active', true)
+    .select('id', 'serial_number', 'instance_code', 'catalog_product_id', 'site_name')
+    .where('customer_company_id', company.id)
+    .where('organization_id', organizationId)
+    .where('is_active', true)
 
   if (hints.length === 0) {
     // Auto-suggest if customer has exactly one active machine
@@ -263,7 +257,8 @@ const promptSchema = `{
   "service_type": "commissioning | regular | warranty_claim | maintenance",
   "priority": "normal | urgent | critical",
   "description": "string — 1-3 sentence summary of the service request",
-  "address": "string — site/location address if mentioned"
+  "address": "string — site/location address if mentioned",
+  "sales_channel_id": "string (uuid) — Open Mercato sales channel ID that represents the intake/source channel, if known"
 }`
 
 const promptRules = [
@@ -272,6 +267,7 @@ const promptRules = [
   'Infer service_type from keywords: "commissioning"/"installation"/"setup" → commissioning; "warranty"/"guarantee"/"claim" → warranty_claim; "maintenance"/"checkup"/"scheduled"/"preventive"/"annual" → maintenance; all other service requests → regular.',
   'Infer priority from urgency signals: "production stopped"/"urgent"/"ASAP"/"critical"/"emergency"/"blocked" → urgent or critical; "scheduled"/"planned"/"next visit"/"when convenient" → normal.',
   'Extract machine_hints as an array of any machine identifiers mentioned in the email: serial numbers, model codes, machine names, asset codes. Include partial matches.',
+  'When a default channel ID is available from inbox context, include it as sales_channel_id so the resulting ticket keeps the Open Mercato sales channel source.',
   'Write description as a 1-3 sentence summary of the service issue. Do not copy the full email body.',
 ]
 

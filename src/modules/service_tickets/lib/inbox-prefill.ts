@@ -1,3 +1,6 @@
+"use client"
+
+import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import type { TicketFormValues } from '../components/ticketFormConfig'
 
 export interface InboxDraftData {
@@ -10,6 +13,8 @@ export interface InboxDraftData {
     customer_entity_id?: string
     contact_person_id?: string
     machine_instance_id?: string
+    sales_channel_id?: string
+    channelId?: string
     address?: string
     _confidence?: number
     _discrepancies?: Array<{ type: string; message: string }>
@@ -28,6 +33,7 @@ const PREFILLABLE_FIELDS = [
   'customer_entity_id',
   'contact_person_id',
   'machine_instance_id',
+  'sales_channel_id',
   'address',
 ] as const
 
@@ -55,6 +61,9 @@ export function mergeInboxPrefill(
       ;(merged as any)[field] = String(value)
     }
   }
+  if (!merged.sales_channel_id && payload.channelId) {
+    merged.sales_channel_id = String(payload.channelId)
+  }
   return merged
 }
 
@@ -64,7 +73,7 @@ export async function markInboxActionExecuted(
   createdEntityId: string,
 ): Promise<boolean> {
   try {
-    const res = await fetch(`/api/inbox_ops/proposals/${proposalId}/actions/${actionId}`, {
+    const res = await apiCall(`/api/inbox_ops/proposals/${proposalId}/actions/${actionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
