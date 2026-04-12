@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { makeCrudRoute } from '@open-mercato/shared/lib/crud/factory'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
+import { resolveTenantEncryptionService } from '@open-mercato/shared/lib/encryption/customFieldValues'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { Where, WhereValue } from '@open-mercato/shared/lib/query/types'
 import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
@@ -226,9 +227,41 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         stIdsByTicket.set(ticketId, next)
       }
 
+      // Fetch and decrypt company names from customer_entities via raw Knex
+      const customerEntityIds = [
+        ...new Set(items.map((item) => item.customerEntityId).filter((id): id is string => !!id)),
+      ]
+      const nameMap = new Map<string, string>()
+      if (customerEntityIds.length > 0) {
+        const knex = em.getConnection().getKnex()
+        const tenantId: string | undefined = ctx.auth?.tenantId ?? undefined
+        const organizationId: string | undefined = ctx.selectedOrganizationId ?? ctx.auth?.orgId ?? undefined
+        const rows: { id: string; display_name: string }[] = await knex('customer_entities')
+          .select('id', 'display_name')
+          .whereIn('id', customerEntityIds)
+          .modify((qb) => {
+            if (organizationId) qb.andWhere({ organization_id: organizationId })
+            if (tenantId) qb.andWhere({ tenant_id: tenantId })
+          })
+        const encryptionService = resolveTenantEncryptionService(em as any)
+        for (const row of rows) {
+          const decrypted = await encryptionService.decryptEntityPayload(
+            'customers:customer_entity',
+            row as Record<string, unknown>,
+            tenantId ?? null,
+            organizationId ?? null,
+          )
+          const name = (decrypted.display_name ?? row.display_name) as string | null
+          if (name) nameMap.set(row.id, name)
+        }
+      }
+
       for (const item of items) {
         item.staffMemberIds = staffIdsByTicket.get(item.id) ?? []
         ;(item as any).machineServiceTypeIds = stIdsByTicket.get(item.id) ?? []
+        ;(item as any)._service_tickets = {
+          companyName: item.customerEntityId ? (nameMap.get(item.customerEntityId) ?? null) : null,
+        }
       }
     },
   },
