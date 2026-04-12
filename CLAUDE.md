@@ -10,6 +10,12 @@
 
 Use `git show <branch>:<path>` to read files from other branches without switching. Useful for review-based work and cross-branch comparison.
 
+## MikroORM Entity Gotchas
+
+- `em.create()` with `defaultRaw: 'gen_random_uuid()'` does NOT assign `id` until DB INSERT. If you need the `id` before flush (e.g., for junction table FKs), generate it yourself: `import { randomUUID } from 'node:crypto'` and pass `id: randomUUID()` to `em.create()`.
+- MikroORM single-flush batches may insert child rows before parent rows, violating FK constraints. For parent-child inserts (e.g., reservation + junction technicians), flush the parent first: `em.persist(parent); await em.flush(); /* then create children */; await em.flush()` — all within `em.begin()/em.commit()`.
+- `withAtomicFlush` shim in `technician_schedule/lib/atomic.ts` does a single flush — do NOT use it for parent+child inserts with FK constraints. Use manual begin/flush/commit instead.
+
 ## Migration Gotchas
 
 - `yarn mercato db generate` is **broken for `@app` modules** on Node 24 — tsx loads `@mikro-orm/core` as a separate instance, so `@Entity()` metadata is invisible to the CLI's `MikroORM.init()`. Write migrations manually for now.
@@ -19,6 +25,8 @@ Use `git show <branch>:<path>` to read files from other branches without switchi
 
 ## Turbopack / Bundler Gotchas
 
+- **Next.js 16 route handler `params` is a Promise** — use `const { id } = await params` not `params.id`. TS error here breaks ALL routes via Turbopack cache.
+- **Turbopack caches broken compilations** — a TS error in any route file causes 500 on ALL endpoints (including `/api/auth/login`). Fix: `rm -rf .next` and restart `yarn dev`.
 - **Never import entities across modules** (e.g., `service_tickets/data/entities` from `technicians/data/enrichers`). Turbopack throws "CJS module can't be async". Use raw Knex queries for cross-module DB access instead.
 - **`injection-table.ts` must export both named `injectionTable` and `default`** — Turbopack fails without the named export even though generated code tries `default ?? injectionTable`.
 - **`enrichers: { entityId }` on `makeCrudRoute`** causes Turbopack CJS async errors in the current Node/Next.js setup. Enrichers are registered globally but can't be activated on routes yet.

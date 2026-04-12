@@ -128,6 +128,8 @@ Register in `src/modules.ts`: `{ id: '<id>', from: '@app' }`
 - Custom modules use `from: '@app'` in `src/modules.ts`
 - Sidebar icons MUST use `lucide-react` components — never inline SVG via `React.createElement`
 - DataTable MUST wire pagination props (`page`, `pageSize`, `totalCount`, `onPageChange`)
+- `pageGroupKey` MUST match across modules for shared sidebar groups. The "Service" group uses `'service_tickets.nav.group'`. Don't invent new keys for modules that belong in the same group.
+- Don't combine `page.meta.ts` sidebar registration with widget injection `menu:sidebar:main` — it creates duplicate menu entries. Use one or the other (prefer `page.meta.ts`).
 
 ## Machine Integration Learnings
 
@@ -271,7 +273,7 @@ Tests ensure hackathon speed — catch regressions before they compound.
 ```bash
 yarn test              # Run all unit tests (Jest, ~2s)
 yarn test --watch      # Watch mode during development
-yarn test -- --testPathPattern=service_tickets  # Run only service_tickets tests
+yarn test -- --testPathPatterns=service_tickets  # Run only service_tickets tests (NOTE: --testPathPatterns not --testPathPattern)
 ```
 
 - Test location: `src/modules/<id>/**/__tests__/*.test.(ts|tsx)`

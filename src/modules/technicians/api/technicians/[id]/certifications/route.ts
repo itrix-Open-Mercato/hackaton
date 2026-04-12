@@ -48,9 +48,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       items: certs.map((c) => ({
         id: c.id,
         name: c.name,
+        certType: c.certType ?? null,
         certificateNumber: c.certificateNumber ?? null,
+        code: c.code ?? null,
         issuedAt: c.issuedAt ? c.issuedAt.toISOString() : null,
         expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
+        issuedBy: c.issuedBy ?? null,
+        notes: c.notes ?? null,
         isExpired: c.expiresAt ? c.expiresAt < now : false,
       })),
     })
