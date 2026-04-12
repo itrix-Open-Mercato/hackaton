@@ -8,7 +8,7 @@ import { LoadingMessage, ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { EnumBadge, type EnumBadgeMap } from '@open-mercato/ui/backend/ValueIcons'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
-import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
@@ -95,37 +95,37 @@ export default function ServiceProtocolDetailPage({ params }: { params?: { id?: 
   }
 
   const submitMutation = useMutation({
-    mutationFn: () => apiCall('/api/service_protocols/protocols/submit', { method: 'POST', body: JSON.stringify({ id }) }),
+    mutationFn: () => apiCallOrThrow('/api/service_protocols/protocols/submit', { method: 'POST', body: JSON.stringify({ id }) }),
     onSuccess: () => { flash(t('service_protocols.action.submit.success'), 'success'); invalidate() },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.action.error'), 'error'),
   })
 
   const approveMutation = useMutation({
-    mutationFn: () => apiCall('/api/service_protocols/protocols/approve', { method: 'POST', body: JSON.stringify({ id }) }),
+    mutationFn: () => apiCallOrThrow('/api/service_protocols/protocols/approve', { method: 'POST', body: JSON.stringify({ id }) }),
     onSuccess: () => { flash(t('service_protocols.action.approve.success'), 'success'); invalidate() },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.action.error'), 'error'),
   })
 
   const rejectMutation = useMutation({
-    mutationFn: (notes: string) => apiCall('/api/service_protocols/protocols/reject', { method: 'POST', body: JSON.stringify({ id, notes }) }),
+    mutationFn: (notes: string) => apiCallOrThrow('/api/service_protocols/protocols/reject', { method: 'POST', body: JSON.stringify({ id, notes }) }),
     onSuccess: () => { flash(t('service_protocols.action.reject.success'), 'success'); setShowRejectInput(false); setRejectNotes(''); invalidate() },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.action.error'), 'error'),
   })
 
   const closeMutation = useMutation({
-    mutationFn: (complete: boolean) => apiCall('/api/service_protocols/protocols/close', { method: 'POST', body: JSON.stringify({ id, complete_service_ticket: complete }) }),
+    mutationFn: (complete: boolean) => apiCallOrThrow('/api/service_protocols/protocols/close', { method: 'POST', body: JSON.stringify({ id, complete_service_ticket: complete }) }),
     onSuccess: () => { flash(t('service_protocols.action.close.success'), 'success'); setCloseConfirm(false); invalidate() },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.action.error'), 'error'),
   })
 
   const cancelMutation = useMutation({
-    mutationFn: (notes: string | null) => apiCall('/api/service_protocols/protocols/cancel', { method: 'POST', body: JSON.stringify({ id, notes }) }),
+    mutationFn: (notes: string | null) => apiCallOrThrow('/api/service_protocols/protocols/cancel', { method: 'POST', body: JSON.stringify({ id, notes }) }),
     onSuccess: () => { flash(t('service_protocols.action.cancel.success'), 'success'); setShowCancelInput(false); setCancelNotes(''); invalidate(); router.push('/backend/service-protocols') },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.action.error'), 'error'),
   })
 
   const unlockMutation = useMutation({
-    mutationFn: (notes: string) => apiCall('/api/service_protocols/protocols/unlock', { method: 'POST', body: JSON.stringify({ id, notes }) }),
+    mutationFn: (notes: string) => apiCallOrThrow('/api/service_protocols/protocols/unlock', { method: 'POST', body: JSON.stringify({ id, notes }) }),
     onSuccess: () => { flash(t('service_protocols.action.unlock.success'), 'success'); setShowUnlockInput(false); setUnlockNotes(''); invalidate() },
     onError: (err) => flash(err instanceof Error ? err.message : t('service_protocols.action.error'), 'error'),
   })

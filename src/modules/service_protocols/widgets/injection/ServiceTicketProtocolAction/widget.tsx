@@ -5,7 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { readApiResultOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { ClipboardList, ExternalLink } from 'lucide-react'
@@ -28,6 +28,7 @@ function ServiceTicketProtocolActionWidget({ data }: InjectionWidgetComponentPro
   const t = useT()
   const router = useRouter()
   const scopeVersion = useOrganizationScopeVersion()
+  const [showConfirm, setShowConfirm] = React.useState(false)
 
   const formValues = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>
 
@@ -58,11 +59,10 @@ function ServiceTicketProtocolActionWidget({ data }: InjectionWidgetComponentPro
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const result = await apiCall('/api/service_protocols/protocols', {
+      return readApiResultOrThrow<{ id: string; protocolNumber: string; status: string; serviceTicketId: string }>('/api/service_protocols/protocols', {
         method: 'POST',
         body: JSON.stringify({ service_ticket_id: ticketId }),
-      }) as { id: string }
-      return result
+      })
     },
     onSuccess: (result) => {
       flash(t('service_protocols.widget.created'), 'success')
@@ -93,6 +93,7 @@ function ServiceTicketProtocolActionWidget({ data }: InjectionWidgetComponentPro
             <span className="font-medium text-foreground">{activeProtocol.protocolNumber}</span>
           </span>
           <Button
+            type="button"
             size="sm"
             variant="outline"
             onClick={() => router.push(`/backend/service-protocols/${activeProtocol.id}`)}
@@ -102,16 +103,31 @@ function ServiceTicketProtocolActionWidget({ data }: InjectionWidgetComponentPro
           </Button>
         </div>
       ) : canCreateProtocol ? (
-        <Button
-          size="sm"
-          onClick={() => createMutation.mutate()}
-          disabled={createMutation.isPending}
-        >
-          <ClipboardList size={14} className="mr-1" />
-          {createMutation.isPending
-            ? t('service_protocols.widget.creating')
-            : t('service_protocols.widget.createProtocol')}
-        </Button>
+        showConfirm ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t('service_protocols.widget.confirmCreate')}</span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => { setShowConfirm(false); createMutation.mutate() }}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? t('service_protocols.widget.creating') : t('service_protocols.widget.confirmYes')}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setShowConfirm(false)}>
+              {t('service_protocols.widget.confirmNo')}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowConfirm(true)}
+          >
+            <ClipboardList size={14} className="mr-1" />
+            {t('service_protocols.widget.createProtocol')}
+          </Button>
+        )
       ) : (
         <p className="text-sm text-muted-foreground">
           {!statusAllowed

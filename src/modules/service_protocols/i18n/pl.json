@@ -76,5 +76,8 @@
   "service_protocols.widget.error": "Błąd tworzenia protokołu",
   "service_protocols.widget.statusNotAllowed": "Nie można utworzyć protokołu dla zgłoszeń ze statusem 'nowe' lub 'anulowane'",
   "service_protocols.widget.noTechnicians": "Przypisz co najmniej jednego serwisanta przed utworzeniem protokołu",
-  "service_protocols.widget.unavailable": "Protokół niedostępny dla tego zgłoszenia"
+  "service_protocols.widget.unavailable": "Protokół niedostępny dla tego zgłoszenia",
+  "service_protocols.widget.confirmCreate": "Czy chcesz utworzyć nowy protokół serwisowy dla tego zgłoszenia?",
+  "service_protocols.widget.confirmYes": "Utwórz",
+  "service_protocols.widget.confirmNo": "Anuluj"
 }
