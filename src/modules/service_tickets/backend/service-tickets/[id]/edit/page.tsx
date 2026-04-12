@@ -11,6 +11,7 @@ import {
   buildTicketFields,
   buildTicketGroups,
   createEmptyTicketFormValues,
+  geocodeAddress,
   mapTicketToFormValues,
   type TicketFormValues,
 } from '../../../../components/ticketFormConfig'
@@ -67,6 +68,21 @@ export default function EditServiceTicketPage({ params }: { params?: { id?: stri
     }
   }, [id, t])
 
+  // Auto-geocode: when ticket loads with address but no coordinates, fill them in the background
+  React.useEffect(() => {
+    if (!initial) return
+    const address = initial.address?.trim()
+    const hasCoords = initial.latitude?.trim() && initial.longitude?.trim()
+    if (!address || hasCoords) return
+
+    let cancelled = false
+    void geocodeAddress(address).then((coords) => {
+      if (cancelled || !coords) return
+      setInitial((prev) => prev ? { ...prev, latitude: String(coords.lat), longitude: String(coords.lng) } : prev)
+    })
+    return () => { cancelled = true }
+  }, [initial?.id]) // eslint-disable-line react-hooks/exhaustive-deps -- run once after initial load, keyed by ticket id
+
   const fallbackInitialValues = React.useMemo<TicketFormValues>(() => createEmptyTicketFormValues(id ?? ''), [id])
 
   if (!id) return null
@@ -78,30 +94,30 @@ export default function EditServiceTicketPage({ params }: { params?: { id?: stri
           <ErrorMessage label={err} />
         ) : (
           <CrudForm<TicketFormValues>
-            title={t('service_tickets.form.edit.title')}
-            backHref="/backend/service-tickets"
-            entityIds={[ENTITY_TYPE]}
-            fields={baseFields}
-            groups={groups}
-            initialValues={initial ?? fallbackInitialValues}
-            submitLabel={t('service_tickets.form.edit.submit')}
-            cancelHref="/backend/service-tickets"
-            successRedirect={successRedirect}
-            isLoading={loading}
-            loadingMessage={t('service_tickets.form.loading')}
-            onSubmit={async (values) => { await updateCrud('service_tickets/tickets', values) }}
-            onDelete={async () => {
-              if (!id) return
+              title={t('service_tickets.form.edit.title')}
+              backHref="/backend/service-tickets"
+              entityIds={[ENTITY_TYPE]}
+              fields={baseFields}
+              groups={groups}
+              initialValues={initial ?? fallbackInitialValues}
+              submitLabel={t('service_tickets.form.edit.submit')}
+              cancelHref="/backend/service-tickets"
+              successRedirect={successRedirect}
+              isLoading={loading}
+              loadingMessage={t('service_tickets.form.loading')}
+              onSubmit={async (values) => { await updateCrud('service_tickets/tickets', values) }}
+              onDelete={async () => {
+                if (!id) return
 
-              try {
-                await deleteCrud('service_tickets/tickets', String(id))
-                pushWithFlash(router, '/backend/service-tickets', t('service_tickets.form.flash.deleted'), 'success')
-              } catch (error) {
-                const message =
-                  error instanceof Error && error.message ? error.message : t('service_tickets.table.error.delete')
-                setErr(message)
-              }
-            }}
+                try {
+                  await deleteCrud('service_tickets/tickets', String(id))
+                  pushWithFlash(router, '/backend/service-tickets', t('service_tickets.form.flash.deleted'), 'success')
+                } catch (error) {
+                  const message =
+                    error instanceof Error && error.message ? error.message : t('service_tickets.table.error.delete')
+                  setErr(message)
+                }
+              }}
           />
         )}
       </PageBody>

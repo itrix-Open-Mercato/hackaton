@@ -40,10 +40,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
     fields: [
       'id', 'tenant_id', 'organization_id', 'catalog_product_id',
       'machine_family', 'model_code',
-      'supported_service_types', 'required_skills', 'required_certifications',
-      'default_team_size', 'default_service_duration_minutes',
       'preventive_maintenance_interval_days', 'default_warranty_months',
-      'startup_notes', 'service_notes',
       'is_active', 'created_at', 'updated_at',
     ],
     sortFieldMap: {

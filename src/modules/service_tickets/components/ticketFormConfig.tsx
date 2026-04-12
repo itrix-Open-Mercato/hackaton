@@ -6,16 +6,15 @@ import type { ServiceTicketListItem } from '../types'
 import CustomerCascadeSelect from './CustomerCascadeSelect'
 import MachineCascadeSelect from './MachineCascadeSelect'
 import { searchSalesChannels } from './salesChannelOptions'
+import ServiceTypePicker from './ServiceTypePicker'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
-  SERVICE_TYPE_I18N_KEYS,
-  SERVICE_TYPE_VALUES,
   STATUS_I18N_KEYS,
   STATUS_VALUES,
 } from '../lib/constants'
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   if (!apiKey || !address.trim()) return null
   try {
@@ -101,6 +100,7 @@ export type TicketFormValues = {
   order_id: string
   staff_member_ids: string[]
   sales_channel_id: string
+  machine_service_type_ids: string[]
 }
 
 type BuildTicketFormConfigOptions = {
@@ -112,13 +112,6 @@ export function buildTicketFields(
   options: BuildTicketFormConfigOptions,
 ): CrudField[] {
   const fields: CrudField[] = [
-    {
-      id: 'service_type',
-      label: t('service_tickets.form.fields.serviceType.label'),
-      type: 'select',
-      required: true,
-      options: SERVICE_TYPE_VALUES.map((value) => ({ value, label: t(SERVICE_TYPE_I18N_KEYS[value]) })),
-    },
     {
       id: 'priority',
       label: t('service_tickets.form.fields.priority.label'),
@@ -193,8 +186,8 @@ export function buildTicketGroups(
   options: BuildTicketFormConfigOptions,
 ): CrudFormGroup[] {
   const basicFields = options.includeStatus
-    ? ['service_type', 'status', 'priority', 'description']
-    : ['service_type', 'priority', 'description']
+    ? ['status', 'priority', 'description']
+    : ['priority', 'description']
 
   return [
     { id: 'basicInfo', title: t('service_tickets.form.groups.basicInfo'), column: 1, fields: basicFields },
@@ -219,16 +212,22 @@ export function buildTicketGroups(
               emptyProfile: t('service_tickets.form.machineHints.emptyProfile'),
               machineModelLabel: t('service_tickets.form.machineHints.machineModel'),
               locationLabel: t('service_tickets.form.machineHints.location'),
-              serviceDurationLabel: t('service_tickets.form.machineHints.serviceDuration'),
               maintenanceIntervalLabel: t('service_tickets.form.machineHints.maintenanceInterval'),
-              serviceNotesLabel: t('service_tickets.form.machineHints.serviceNotes'),
-              partsTitle: t('service_tickets.form.machineHints.partsTitle'),
-              emptyParts: t('service_tickets.form.machineHints.emptyParts'),
+              serviceTypesTitle: t('service_tickets.form.machineHints.serviceTypesTitle'),
+              emptyServiceTypes: t('service_tickets.form.machineHints.emptyServiceTypes'),
             }}
-            setMachineId={(value) => setValue('machine_instance_id', value)}
+            setMachineId={(value) => {
+              setValue('machine_instance_id', value)
+              if (!value) setValue('machine_service_type_ids', [] as any)
+            }}
             setCustomerId={(value) => setValue('customer_entity_id', value)}
             setContactPersonId={(value) => setValue('contact_person_id', value)}
             setAddress={(value) => setValue('address', value)}
+          />
+          <ServiceTypePicker
+            machineInstanceId={String(values.machine_instance_id ?? '') || null}
+            selectedIds={(values as any).machine_service_type_ids ?? []}
+            onChange={(ids) => setValue('machine_service_type_ids', ids as any)}
           />
           <CustomerCascadeSelect
             companyId={String(values.customer_entity_id ?? '')}
@@ -267,6 +266,7 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     order_id: '',
     staff_member_ids: [],
     sales_channel_id: '',
+    machine_service_type_ids: [],
   }
 }
 
@@ -301,5 +301,8 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
     order_id: pick<string>('orderId', 'order_id') ?? '',
     staff_member_ids: Array.isArray(staffMemberIds) ? staffMemberIds : [],
     sales_channel_id: salesChannelId ?? '',
+    machine_service_type_ids: Array.isArray(pick<string[]>('machineServiceTypeIds', 'machine_service_type_ids'))
+      ? pick<string[]>('machineServiceTypeIds', 'machine_service_type_ids')!
+      : [],
   }
 }

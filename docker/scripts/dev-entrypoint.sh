@@ -90,6 +90,9 @@ if should_install_dependencies; then
   record_install_state
 fi
 
+echo "Generating Open Mercato discovery files..."
+yarn generate
+
 sh /app/docker/scripts/init-or-migrate.sh
 
 exec yarn dev

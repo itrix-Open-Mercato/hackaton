@@ -30,6 +30,7 @@ const defaults = {
   order_id: '',
   sales_channel_id: '',
   staff_member_ids: [] as string[],
+  machine_service_type_ids: [] as string[],
 }
 
 describe('mergeInboxPrefill', () => {

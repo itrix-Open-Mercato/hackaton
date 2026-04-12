@@ -5,7 +5,7 @@ import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { Where, WhereValue } from '@open-mercato/shared/lib/query/types'
 import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import { ticketCrudEvents, ticketCrudIndexer } from '../../commands/tickets'
-import { ServiceTicket, ServiceTicketAssignment } from '../../data/entities'
+import { ServiceTicket, ServiceTicketAssignment, ServiceTicketServiceType } from '../../data/entities'
 import { ENTITY_TYPE } from '../../lib/constants'
 import type { ServiceTicketListItem } from '../../types'
 import {
@@ -210,8 +210,25 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         staffIdsByTicket.set(ticketId, next)
       }
 
+      // Service type assignments
+      const stAssignments = await em.find(
+        ServiceTicketServiceType,
+        {
+          ticket: { id: { $in: items.map((item) => item.id) } },
+        } as FilterQuery<ServiceTicketServiceType>,
+      )
+      const stIdsByTicket = new Map<string, string[]>()
+      for (const sta of stAssignments) {
+        const ticketId = typeof sta.ticket === 'string' ? sta.ticket : sta.ticket?.id
+        if (!ticketId) continue
+        const next = stIdsByTicket.get(ticketId) ?? []
+        next.push(sta.machineServiceTypeId)
+        stIdsByTicket.set(ticketId, next)
+      }
+
       for (const item of items) {
         item.staffMemberIds = staffIdsByTicket.get(item.id) ?? []
+        ;(item as any).machineServiceTypeIds = stIdsByTicket.get(item.id) ?? []
       }
     },
   },

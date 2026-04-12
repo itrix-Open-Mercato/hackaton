@@ -9,7 +9,7 @@ import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { ServiceTicket, ServiceTicketAssignment, ServiceTicketDateChange } from '../data/entities'
+import { ServiceTicket, ServiceTicketAssignment, ServiceTicketDateChange, ServiceTicketServiceType } from '../data/entities'
 import { ticketCreateSchema, ticketUpdateSchema } from '../data/validators'
 import { emitServiceTicketEvent } from '../events'
 import { ENTITY_TYPE } from '../lib/constants'
@@ -216,6 +216,20 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
       }
     }
 
+    if (parsed.machine_service_type_ids?.length) {
+      for (const machineServiceTypeId of parsed.machine_service_type_ids) {
+        await de.createOrmEntity({
+          entity: ServiceTicketServiceType,
+          data: {
+            ticket,
+            machineServiceTypeId,
+            tenantId: scope.tenantId,
+            organizationId: scope.organizationId,
+          },
+        })
+      }
+    }
+
     await emitCrudSideEffects({
       dataEngine: de,
       action: 'created',
@@ -412,6 +426,36 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
             data: {
               ticket,
               staffMemberId,
+              tenantId: scope.tenantId,
+              organizationId: scope.organizationId,
+            },
+          })
+        }
+      }
+
+      await em.flush()
+    }
+
+    if (parsed.machine_service_type_ids) {
+      const currentServiceTypes = await em.find(ServiceTicketServiceType, {
+        ticket: { id: parsed.id },
+      } as FilterQuery<ServiceTicketServiceType>)
+      const existingStIds = new Set(currentServiceTypes.map((s) => s.machineServiceTypeId))
+      const wantedStIds = new Set(parsed.machine_service_type_ids)
+
+      for (const st of currentServiceTypes) {
+        if (!wantedStIds.has(st.machineServiceTypeId)) {
+          em.remove(st)
+        }
+      }
+
+      for (const machineServiceTypeId of parsed.machine_service_type_ids) {
+        if (!existingStIds.has(machineServiceTypeId)) {
+          await de.createOrmEntity({
+            entity: ServiceTicketServiceType,
+            data: {
+              ticket,
+              machineServiceTypeId,
               tenantId: scope.tenantId,
               organizationId: scope.organizationId,
             },

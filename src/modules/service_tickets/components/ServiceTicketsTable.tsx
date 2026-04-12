@@ -45,15 +45,6 @@ function buildStatusMap(t: (key: string) => string): EnumBadgeMap {
   }
 }
 
-function buildServiceTypeMap(t: (key: string) => string): EnumBadgeMap {
-  return {
-    commissioning: { label: t('service_tickets.enum.serviceType.commissioning'), className: 'border-blue-200 text-blue-700 bg-blue-50' },
-    regular: { label: t('service_tickets.enum.serviceType.regular'), className: '' },
-    warranty_claim: { label: t('service_tickets.enum.serviceType.warranty_claim'), className: 'border-orange-200 text-orange-700 bg-orange-50' },
-    maintenance: { label: t('service_tickets.enum.serviceType.maintenance'), className: 'border-yellow-200 text-yellow-800 bg-yellow-50' },
-  }
-}
-
 function buildPriorityMap(t: (key: string) => string): EnumBadgeMap {
   return {
     normal: { label: t('service_tickets.enum.priority.normal'), className: '' },
@@ -64,7 +55,6 @@ function buildPriorityMap(t: (key: string) => string): EnumBadgeMap {
 
 function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListItem>[] {
   const statusMap = buildStatusMap(t)
-  const serviceTypeMap = buildServiceTypeMap(t)
   const priorityMap = buildPriorityMap(t)
 
   return [
@@ -79,12 +69,6 @@ function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListIt
         if (!value) return <span className="text-muted-foreground">—</span>
         return value
       },
-    },
-    {
-      accessorKey: 'serviceType',
-      header: t('service_tickets.table.column.serviceType'),
-      meta: { priority: 2 },
-      cell: ({ getValue }) => <EnumBadge value={getValue() as string} map={serviceTypeMap} />,
     },
     {
       accessorKey: 'status',

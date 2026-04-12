@@ -11,25 +11,21 @@ type MachineProfile = {
   id: string
   machineFamily: string | null
   modelCode: string | null
-  defaultTeamSize: number | null
-  defaultServiceDurationMinutes: number | null
   preventiveMaintenanceIntervalDays: number | null
   defaultWarrantyMonths: number | null
-  startupNotes: string | null
-  serviceNotes: string | null
   isActive: boolean
 }
 
-type PartTemplate = {
+type ServiceTypeInfo = {
   id: string
-  partName: string
-  templateType: string
-  serviceContext: string | null
-  kitName: string | null
-  partCode: string | null
-  quantityDefault: number | null
-  quantityUnit: string | null
-  sortOrder: number
+  serviceType: string
+  defaultTeamSize: number | null
+  defaultServiceDurationMinutes: number | null
+  startupNotes: string | null
+  serviceNotes: string | null
+  skillCount: number
+  certCount: number
+  partCount: number
 }
 
 type WidgetContext = {
@@ -44,29 +40,25 @@ function mapProfile(item: Record<string, unknown>): MachineProfile {
     id: str('id') ?? '',
     machineFamily: str('machine_family'),
     modelCode: str('model_code'),
-    defaultTeamSize: num('default_team_size'),
-    defaultServiceDurationMinutes: num('default_service_duration_minutes'),
     preventiveMaintenanceIntervalDays: num('preventive_maintenance_interval_days'),
     defaultWarrantyMonths: num('default_warranty_months'),
-    startupNotes: str('startup_notes'),
-    serviceNotes: str('service_notes'),
     isActive: item['is_active'] === true,
   }
 }
 
-function mapPartTemplate(item: Record<string, unknown>): PartTemplate {
+function mapServiceType(item: Record<string, unknown>): ServiceTypeInfo {
   const str = (k: string) => typeof item[k] === 'string' ? item[k] as string : null
   const num = (k: string) => typeof item[k] === 'number' ? item[k] as number : null
   return {
     id: str('id') ?? '',
-    partName: str('part_name') ?? '',
-    templateType: str('template_type') ?? '',
-    serviceContext: str('service_context'),
-    kitName: str('kit_name'),
-    partCode: str('part_code'),
-    quantityDefault: num('quantity_default'),
-    quantityUnit: str('quantity_unit'),
-    sortOrder: num('sort_order') ?? 0,
+    serviceType: str('service_type') ?? '',
+    defaultTeamSize: num('default_team_size'),
+    defaultServiceDurationMinutes: num('default_service_duration_minutes'),
+    startupNotes: str('startup_notes'),
+    serviceNotes: str('service_notes'),
+    skillCount: 0,
+    certCount: 0,
+    partCount: 0,
   }
 }
 
@@ -76,7 +68,7 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
   const catalogProductId = context?.resourceId ?? context?.record?.id ?? null
 
   const [profile, setProfile] = React.useState<MachineProfile | null>(null)
-  const [parts, setParts] = React.useState<PartTemplate[]>([])
+  const [serviceTypes, setServiceTypes] = React.useState<ServiceTypeInfo[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -92,17 +84,17 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
         { fallback: { items: [] } },
       )
       const profileItem = profileCall.result?.items?.[0]
-      if (!profileItem) { setProfile(null); setParts([]); setLoading(false); return }
+      if (!profileItem) { setProfile(null); setServiceTypes([]); setLoading(false); return }
       const prof = mapProfile(profileItem)
       setProfile(prof)
 
-      const partsParams = new URLSearchParams({ machineProfileId: prof.id, pageSize: '50', sortField: 'sortOrder', sortDir: 'asc' })
-      const partsCall = await apiCall<{ items?: Record<string, unknown>[] }>(
-        `/api/machine_catalog/part-templates?${partsParams.toString()}`,
+      const stParams = new URLSearchParams({ machineProfileId: prof.id, pageSize: '50', sortField: 'sortOrder', sortDir: 'asc' })
+      const stCall = await apiCall<{ items?: Record<string, unknown>[] }>(
+        `/api/machine_catalog/service-types?${stParams.toString()}`,
         undefined,
         { fallback: { items: [] } },
       )
-      setParts((partsCall.result?.items ?? []).map(mapPartTemplate))
+      setServiceTypes((stCall.result?.items ?? []).map(mapServiceType))
     } catch (err) {
       console.error('machine_catalog.widget.load', err)
       setError(t('machine_catalog.widget.error', 'Failed to load machine profile.'))
@@ -123,7 +115,7 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
             {t('machine_catalog.widget.title', 'Machine Profile')}
           </div>
           <p className="text-xs text-muted-foreground">
-            {t('machine_catalog.widget.subtitle', 'Service configuration and part templates for this machine.')}
+            {t('machine_catalog.widget.subtitle', 'Service configuration and service types for this machine.')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -167,18 +159,6 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
                 <span className="font-mono font-medium">{profile.modelCode}</span>
               </>
             )}
-            {profile.defaultTeamSize != null && (
-              <>
-                <span className="text-muted-foreground">{t('machine_catalog.form.fields.defaultTeamSize', 'Default Team Size')}</span>
-                <span>{profile.defaultTeamSize}</span>
-              </>
-            )}
-            {profile.defaultServiceDurationMinutes != null && (
-              <>
-                <span className="text-muted-foreground">{t('machine_catalog.form.fields.defaultServiceDurationMinutes', 'Service Duration (min)')}</span>
-                <span>{profile.defaultServiceDurationMinutes}</span>
-              </>
-            )}
             {profile.preventiveMaintenanceIntervalDays != null && (
               <>
                 <span className="text-muted-foreground">{t('machine_catalog.form.fields.preventiveMaintenanceIntervalDays', 'PM Interval (days)')}</span>
@@ -193,32 +173,26 @@ export default function MachineCatalogProfileWidget({ context: rawContext }: Inj
             )}
           </div>
 
-          {parts.length > 0 && (
+          {serviceTypes.length > 0 && (
             <div>
               <div className="text-xs font-semibold text-foreground mb-1">
-                {t('machine_catalog.widget.partTemplates', 'Part Templates')} ({parts.length})
+                {t('machine_catalog.widget.serviceTypes', 'Service Types')} ({serviceTypes.length})
               </div>
               <ul className="space-y-1">
-                {parts.map((part) => (
-                  <li key={part.id} className="flex items-center gap-2 rounded border px-2 py-1 text-xs">
-                    <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {part.templateType}
+                {serviceTypes.map((st) => (
+                  <li key={st.id} className="flex items-center gap-2 rounded border px-2 py-1 text-xs">
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      {st.serviceType}
                     </span>
-                    <span className="flex-1 font-medium truncate">{part.partName}</span>
-                    {part.partCode && <span className="font-mono text-muted-foreground">{part.partCode}</span>}
-                    {part.quantityDefault != null && (
-                      <span className="text-muted-foreground">{part.quantityDefault}{part.quantityUnit ? ` ${part.quantityUnit}` : ''}</span>
+                    {st.defaultTeamSize != null && (
+                      <span className="text-muted-foreground">Team: {st.defaultTeamSize}</span>
+                    )}
+                    {st.defaultServiceDurationMinutes != null && (
+                      <span className="text-muted-foreground">{st.defaultServiceDurationMinutes} min</span>
                     )}
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {profile.serviceNotes && (
-            <div>
-              <div className="text-xs font-semibold text-foreground mb-0.5">{t('machine_catalog.form.fields.serviceNotes', 'Service Notes')}</div>
-              <p className="text-xs text-muted-foreground whitespace-pre-line">{profile.serviceNotes}</p>
             </div>
           )}
         </div>

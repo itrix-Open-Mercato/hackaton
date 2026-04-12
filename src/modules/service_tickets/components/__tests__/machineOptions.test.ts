@@ -12,7 +12,7 @@ import {
   buildMachineLabel,
   fetchMachineById,
   fetchMachineProfileByCatalogProductId,
-  fetchMachinePartTemplates,
+  fetchMachineServiceTypes,
   formatMachineAddress,
   mergeMachineOptions,
   searchMachines,
@@ -139,9 +139,8 @@ describe('machineOptions', () => {
             catalogProductId: 'catalog-1',
             machineFamily: 'CNC',
             modelCode: '6000',
-            defaultServiceDurationMinutes: 120,
             preventiveMaintenanceIntervalDays: 180,
-            serviceNotes: 'Check lubrication',
+            defaultWarrantyMonths: 36,
           },
         ],
       })
@@ -153,7 +152,7 @@ describe('machineOptions', () => {
       expect(url).toContain('catalogProductId=catalog-1')
       expect(result).not.toBeNull()
       expect(result!.machineFamily).toBe('CNC')
-      expect(result!.defaultServiceDurationMinutes).toBe(120)
+      expect(result!.preventiveMaintenanceIntervalDays).toBe(180)
     })
 
     it('maps snake_case profile response keys', async () => {
@@ -164,9 +163,8 @@ describe('machineOptions', () => {
             catalog_product_id: 'catalog-2',
             machine_family: 'HVAC',
             model_code: 'TM25',
-            default_service_duration_minutes: 180,
             preventive_maintenance_interval_days: 365,
-            service_notes: 'F-GAZ check',
+            default_warranty_months: 24,
           },
         ],
       })
@@ -175,9 +173,8 @@ describe('machineOptions', () => {
       expect(result).not.toBeNull()
       expect(result!.machineFamily).toBe('HVAC')
       expect(result!.modelCode).toBe('TM25')
-      expect(result!.defaultServiceDurationMinutes).toBe(180)
       expect(result!.preventiveMaintenanceIntervalDays).toBe(365)
-      expect(result!.serviceNotes).toBe('F-GAZ check')
+      expect(result!.defaultWarrantyMonths).toBe(24)
     })
 
     it('returns null when no profile found', async () => {
@@ -188,41 +185,39 @@ describe('machineOptions', () => {
     })
   })
 
-  describe('fetchMachinePartTemplates', () => {
+  describe('fetchMachineServiceTypes', () => {
     it('queries with machineProfileId and maps both casings', async () => {
       mockReadApiResultOrThrow.mockResolvedValue({
         items: [
           {
-            id: 'part-1',
-            part_name: 'Oil filter',
-            part_code: 'FLT-1',
-            quantity_default: '2',
-            quantity_unit: 'pcs',
-            service_context: 'preventive',
-            kit_name: 'Annual kit',
+            id: 'st-1',
+            service_type: 'regular',
+            default_team_size: 2,
+            default_service_duration_minutes: 120,
+            startup_notes: null,
+            service_notes: 'Check lubrication',
           },
           {
-            id: 'part-2',
-            partName: 'Bearing',
-            partCode: 'BRG-9',
-            quantityDefault: '4',
-            quantityUnit: 'pcs',
-            serviceContext: 'repair',
-            kitName: null,
+            id: 'st-2',
+            serviceType: 'commissioning',
+            defaultTeamSize: 3,
+            defaultServiceDurationMinutes: 240,
+            startupNotes: 'Initial setup',
+            serviceNotes: null,
           },
         ],
       })
 
-      const result = await fetchMachinePartTemplates('profile-1')
+      const result = await fetchMachineServiceTypes('profile-1')
 
       const url = mockReadApiResultOrThrow.mock.calls[0][0] as string
       expect(url).toContain('machineProfileId=profile-1')
 
       expect(result).toHaveLength(2)
-      expect(result[0].partName).toBe('Oil filter')
-      expect(result[0].partCode).toBe('FLT-1')
-      expect(result[1].partName).toBe('Bearing')
-      expect(result[1].serviceContext).toBe('repair')
+      expect(result[0].serviceType).toBe('regular')
+      expect(result[0].defaultTeamSize).toBe(2)
+      expect(result[1].serviceType).toBe('commissioning')
+      expect(result[1].defaultServiceDurationMinutes).toBe(240)
     })
   })
 

@@ -153,6 +153,31 @@ export class ServiceTicketPart {
   updatedAt: Date = new Date()
 }
 
+@Entity({ tableName: 'service_ticket_service_types' })
+@Unique({ name: 'stst_ticket_service_type_unique', properties: ['ticket', 'machineServiceTypeId'] })
+@Index({ name: 'stst_ticket_idx', properties: ['ticket'] })
+export class ServiceTicketServiceType {
+  [OptionalProps]?: 'createdAt'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @ManyToOne(() => ServiceTicket, { fieldName: 'ticket_id' })
+  ticket!: ServiceTicket
+
+  @Property({ name: 'machine_service_type_id', type: 'uuid' })
+  machineServiceTypeId!: string
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+}
+
 @Entity({ tableName: 'service_ticket_date_changes' })
 export class ServiceTicketDateChange {
   [OptionalProps]?: 'createdAt'

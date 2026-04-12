@@ -13,19 +13,14 @@ export default function CreateMachineProfilePage() {
     { id: 'catalogProductId', label: t('machine_catalog.form.fields.catalogProductId', 'Catalog Product ID'), type: 'text', required: true, placeholder: 'UUID of catalog product' },
     { id: 'machineFamily', label: t('machine_catalog.form.fields.machineFamily', 'Machine Family'), type: 'text', placeholder: 'e.g. CNC Fräsmaschinen' },
     { id: 'modelCode', label: t('machine_catalog.form.fields.modelCode', 'Model Code'), type: 'text', placeholder: 'e.g. VMC-500' },
-    { id: 'defaultTeamSize', label: t('machine_catalog.form.fields.defaultTeamSize', 'Default Team Size'), type: 'number' },
-    { id: 'defaultServiceDurationMinutes', label: t('machine_catalog.form.fields.defaultServiceDurationMinutes', 'Default Service Duration (min)'), type: 'number' },
     { id: 'preventiveMaintenanceIntervalDays', label: t('machine_catalog.form.fields.preventiveMaintenanceIntervalDays', 'PM Interval (days)'), type: 'number' },
     { id: 'defaultWarrantyMonths', label: t('machine_catalog.form.fields.defaultWarrantyMonths', 'Default Warranty (months)'), type: 'number' },
-    { id: 'startupNotes', label: t('machine_catalog.form.fields.startupNotes', 'Startup Notes'), type: 'textarea' },
-    { id: 'serviceNotes', label: t('machine_catalog.form.fields.serviceNotes', 'Service Notes'), type: 'textarea' },
     { id: 'isActive', label: t('machine_catalog.form.fields.isActive', 'Active'), type: 'checkbox' },
   ], [t])
 
   const groups = React.useMemo<CrudFormGroup[]>(() => [
     { id: 'identity', title: t('machine_catalog.form.groups.identity', 'Identity'), column: 1, fields: ['catalogProductId', 'machineFamily', 'modelCode'] },
-    { id: 'service', title: t('machine_catalog.form.groups.service', 'Service Defaults'), column: 2, fields: ['defaultTeamSize', 'defaultServiceDurationMinutes', 'preventiveMaintenanceIntervalDays', 'defaultWarrantyMonths'] },
-    { id: 'notes', title: t('machine_catalog.form.groups.notes', 'Notes'), column: 1, fields: ['startupNotes', 'serviceNotes'] },
+    { id: 'service', title: t('machine_catalog.form.groups.service', 'Service Defaults'), column: 2, fields: ['preventiveMaintenanceIntervalDays', 'defaultWarrantyMonths'] },
     { id: 'status', title: t('machine_catalog.form.groups.status', 'Status'), column: 2, fields: ['isActive'] },
   ], [t])
 

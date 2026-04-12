@@ -1,6 +1,7 @@
 import './commands/technicians'
 import './commands/skills'
 import './commands/certifications'
+import './commands/availability'
 import type { ModuleInfo } from '@open-mercato/shared/modules/registry'
 
 export const metadata: ModuleInfo = {
