@@ -7,6 +7,8 @@ import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/b
 import { fetchCrudList, updateCrud, deleteCrud } from '@open-mercato/ui/backend/utils/crud'
 import { pushWithFlash } from '@open-mercato/ui/backend/utils/flash'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { searchCompanies } from '../../../components/companyOptions'
+import { searchCatalogProducts } from '../../../components/catalogProductOptions'
 import MachineServiceTypes from '../../../components/MachineServiceTypes'
 
 type MachineFormValues = {
@@ -44,8 +46,8 @@ export default function EditMachineInstancePage({ params }: { params?: { id?: st
   const fields = React.useMemo<CrudField[]>(() => [
     { id: 'instanceCode', label: t('machine_instances.form.fields.instanceCode', 'Instance Code'), type: 'text', required: true },
     { id: 'serialNumber', label: t('machine_instances.form.fields.serialNumber', 'Serial Number'), type: 'text' },
-    { id: 'catalogProductId', label: t('machine_instances.form.fields.catalogProductId', 'Catalog Product ID'), type: 'text' },
-    { id: 'customerCompanyId', label: t('machine_instances.form.fields.customerCompanyId', 'Customer Company ID'), type: 'text' },
+    { id: 'catalogProductId', label: t('machine_instances.form.fields.catalogProductId', 'Catalog Product'), type: 'combobox', placeholder: 'Search products...', loadOptions: searchCatalogProducts, allowCustomValues: false },
+    { id: 'customerCompanyId', label: t('machine_instances.form.fields.customerCompanyId', 'Customer Company'), type: 'combobox', placeholder: 'Search companies...', loadOptions: searchCompanies, allowCustomValues: false },
     { id: 'siteName', label: t('machine_instances.form.fields.siteName', 'Site Name'), type: 'text' },
     { id: 'locationLabel', label: t('machine_instances.form.fields.locationLabel', 'Location'), type: 'text' },
     { id: 'contactName', label: t('machine_instances.form.fields.contactName', 'Contact Name'), type: 'text' },

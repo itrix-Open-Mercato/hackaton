@@ -20,6 +20,7 @@ export type ServiceTicketListItem = {
   orderId?: string | null
   salesChannelId?: string | null
   staffMemberIds?: string[]
+  staffMemberNames?: string[]
   createdByUserId?: string | null
   tenantId?: string
   organizationId?: string

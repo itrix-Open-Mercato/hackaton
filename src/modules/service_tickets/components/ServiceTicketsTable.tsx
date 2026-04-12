@@ -16,6 +16,7 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import type { ServiceTicketListItem } from '../types'
 import { searchCompanies } from './customerOptions'
 import { searchSalesChannels } from './salesChannelOptions'
+import { searchStaffMembers } from './staffOptions'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
@@ -93,6 +94,27 @@ function buildColumns(t: (key: string) => string): ColumnDef<ServiceTicketListIt
       },
     },
     {
+      accessorKey: 'visitEndDate',
+      header: t('service_tickets.table.column.visitEndDate'),
+      meta: { priority: 3 },
+      cell: ({ getValue }) => {
+        const value = getValue() as string | null
+        if (!value) return <span className="text-muted-foreground">—</span>
+        return new Date(value).toLocaleDateString()
+      },
+    },
+    {
+      id: 'technician',
+      header: t('service_tickets.table.column.technician'),
+      meta: { priority: 3 },
+      accessorFn: (row) => row.staffMemberNames ?? [],
+      cell: ({ getValue }) => {
+        const names = getValue() as string[]
+        if (!names.length) return <span className="text-muted-foreground">—</span>
+        return names.join(', ')
+      },
+    },
+    {
       accessorKey: 'createdAt',
       header: t('service_tickets.table.column.createdAt'),
       meta: { priority: 4 },
@@ -113,6 +135,9 @@ export default function ServiceTicketsTable({ filters }: { filters: TicketFilter
   const scopeVersion = useOrganizationScopeVersion()
 
   const { search, setSearch, values, setValues, sorting, page, setPage, handleReset, handleSortingChange, tableParams } = filters
+
+  const staffLabelCache = React.useRef(new Map<string, string>())
+  const companyLabelCache = React.useRef(new Map<string, string>())
 
   const columns = React.useMemo(() => buildColumns(t), [t])
 
@@ -181,11 +206,29 @@ export default function ServiceTicketsTable({ filters }: { filters: TicketFilter
             type: 'combobox',
             loadOptions: async (query?: string) => {
               try {
-                return await searchCompanies(query ?? '')
+                const options = await searchCompanies(query ?? '')
+                for (const opt of options) companyLabelCache.current.set(opt.value, opt.label)
+                return options
               } catch {
                 return []
               }
             },
+            formatValue: (val: string) => companyLabelCache.current.get(val) ?? val,
+          },
+          {
+            id: 'staff_member_id',
+            label: t('service_tickets.table.filters.technician'),
+            type: 'combobox',
+            loadOptions: async (query?: string) => {
+              try {
+                const options = await searchStaffMembers(query ?? '')
+                for (const opt of options) staffLabelCache.current.set(opt.value, opt.label)
+                return options
+              } catch {
+                return []
+              }
+            },
+            formatValue: (val: string) => staffLabelCache.current.get(val) ?? val,
           },
           {
             id: 'sales_channel_id',

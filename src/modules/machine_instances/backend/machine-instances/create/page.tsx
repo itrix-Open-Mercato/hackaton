@@ -5,6 +5,8 @@ import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { createCrud } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { searchCompanies } from '../../../components/companyOptions'
+import { searchCatalogProducts } from '../../../components/catalogProductOptions'
 
 export default function CreateMachineInstancePage() {
   const t = useT()
@@ -12,8 +14,8 @@ export default function CreateMachineInstancePage() {
   const fields = React.useMemo<CrudField[]>(() => [
     { id: 'instanceCode', label: t('machine_instances.form.fields.instanceCode', 'Instance Code'), type: 'text', required: true, placeholder: 'RES-00001' },
     { id: 'serialNumber', label: t('machine_instances.form.fields.serialNumber', 'Serial Number'), type: 'text', placeholder: 'SN-2024-001' },
-    { id: 'catalogProductId', label: t('machine_instances.form.fields.catalogProductId', 'Catalog Product ID'), type: 'text', placeholder: 'UUID of catalog product' },
-    { id: 'customerCompanyId', label: t('machine_instances.form.fields.customerCompanyId', 'Customer Company ID'), type: 'text', placeholder: 'UUID of customer company' },
+    { id: 'catalogProductId', label: t('machine_instances.form.fields.catalogProductId', 'Catalog Product'), type: 'combobox', placeholder: 'Search products...', loadOptions: searchCatalogProducts, allowCustomValues: false },
+    { id: 'customerCompanyId', label: t('machine_instances.form.fields.customerCompanyId', 'Customer Company'), type: 'combobox', placeholder: 'Search companies...', loadOptions: searchCompanies, allowCustomValues: false },
     { id: 'siteName', label: t('machine_instances.form.fields.siteName', 'Site Name'), type: 'text', placeholder: 'e.g. Fabryka Części Sp. z o.o.' },
     { id: 'locationLabel', label: t('machine_instances.form.fields.locationLabel', 'Location'), type: 'text', placeholder: 'e.g. Hala B, stanowisko 4' },
     { id: 'contactName', label: t('machine_instances.form.fields.contactName', 'Contact Name'), type: 'text' },

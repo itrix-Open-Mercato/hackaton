@@ -10,6 +10,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { searchCatalogProducts } from '../../../components/catalogProductOptions'
 
 type ProfileFormValues = {
   id: string
@@ -735,7 +736,7 @@ export default function EditMachineProfilePage({ params }: { params?: { id?: str
   const [err, setErr] = React.useState<string | null>(null)
 
   const fields = React.useMemo<CrudField[]>(() => [
-    { id: 'catalogProductId', label: t('machine_catalog.form.fields.catalogProductId', 'Catalog Product ID'), type: 'text' },
+    { id: 'catalogProductId', label: t('machine_catalog.form.fields.catalogProductId', 'Catalog Product'), type: 'combobox', placeholder: 'Search products...', loadOptions: searchCatalogProducts, allowCustomValues: false },
     { id: 'machineFamily', label: t('machine_catalog.form.fields.machineFamily', 'Machine Family'), type: 'text' },
     { id: 'modelCode', label: t('machine_catalog.form.fields.modelCode', 'Model Code'), type: 'text' },
     { id: 'preventiveMaintenanceIntervalDays', label: t('machine_catalog.form.fields.preventiveMaintenanceIntervalDays', 'PM Interval (days)'), type: 'number' },

@@ -27,6 +27,7 @@ const querySchema = z
     customer_entity_id: z.string().uuid().optional(),
     machine_instance_id: z.string().uuid().optional(),
     sales_channel_id: z.string().uuid().optional(),
+    staff_member_id: z.string().uuid().optional(),
     search: z.string().optional(),
     visit_date_from: z.string().optional(),
     visit_date_to: z.string().optional(),
@@ -107,7 +108,7 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       visitDate: 'visit_date',
       createdAt: 'created_at',
     },
-    buildFilters: async (q: Query): Promise<Where<BaseFields>> => {
+    buildFilters: async (q: Query, ctx: any): Promise<Where<BaseFields>> => {
       const filters: Where<BaseFields> = {}
       const F = filters as Record<string, WhereValue>
 
@@ -119,6 +120,19 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (q.customer_entity_id) F.customer_entity_id = q.customer_entity_id
       if (q.machine_instance_id) F.machine_instance_id = q.machine_instance_id
       if (q.sales_channel_id) F.sales_channel_id = q.sales_channel_id
+
+      if (q.staff_member_id) {
+        const em = ctx.container.resolve('em') as EntityManager
+        const assignments = await em.find(
+          ServiceTicketAssignment,
+          { staffMemberId: q.staff_member_id } as FilterQuery<ServiceTicketAssignment>,
+        )
+        const ticketIds = assignments.map((a) => {
+          const t = a.ticket
+          return typeof t === 'string' ? t : t?.id
+        }).filter((id): id is string => !!id)
+        F.id = ticketIds.length > 0 ? { $in: ticketIds } : { $in: ['00000000-0000-0000-0000-000000000000'] }
+      }
 
       if (q.search) {
         const escaped = escapeLikePattern(q.search)
@@ -211,20 +225,49 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         staffIdsByTicket.set(ticketId, next)
       }
 
-      // Service type assignments
-      const stAssignments = await em.find(
-        ServiceTicketServiceType,
-        {
-          ticket: { id: { $in: items.map((item) => item.id) } },
-        } as FilterQuery<ServiceTicketServiceType>,
-      )
+      // Service type assignments (table may not exist yet — skip gracefully)
       const stIdsByTicket = new Map<string, string[]>()
-      for (const sta of stAssignments) {
-        const ticketId = typeof sta.ticket === 'string' ? sta.ticket : sta.ticket?.id
-        if (!ticketId) continue
-        const next = stIdsByTicket.get(ticketId) ?? []
-        next.push(sta.machineServiceTypeId)
-        stIdsByTicket.set(ticketId, next)
+      try {
+        const stAssignments = await em.find(
+          ServiceTicketServiceType,
+          {
+            ticket: { id: { $in: items.map((item) => item.id) } },
+          } as FilterQuery<ServiceTicketServiceType>,
+        )
+        for (const sta of stAssignments) {
+          const ticketId = typeof sta.ticket === 'string' ? sta.ticket : sta.ticket?.id
+          if (!ticketId) continue
+          const next = stIdsByTicket.get(ticketId) ?? []
+          next.push(sta.machineServiceTypeId)
+          stIdsByTicket.set(ticketId, next)
+        }
+      } catch {
+        // table doesn't exist yet — migration pending
+      }
+
+      const scope = {
+        tenantId: ctx.auth?.tenantId ?? null,
+        organizationId: ctx.selectedOrganizationId ?? ctx.auth?.orgId ?? null,
+      }
+
+      // Resolve staff member display names via Knex (cross-module — no entity import)
+      const allStaffIds = new Set<string>()
+      for (const ids of staffIdsByTicket.values()) {
+        for (const id of ids) allStaffIds.add(id)
+      }
+      const staffNameMap = new Map<string, string>()
+      if (allStaffIds.size > 0) {
+        try {
+          const knex = em.getKnex()
+          const staffRows: { id: string; display_name: string }[] = await knex('staff_team_members')
+            .select('id', 'display_name')
+            .whereIn('id', [...allStaffIds])
+          for (const row of staffRows) {
+            staffNameMap.set(row.id, row.display_name)
+          }
+        } catch {
+          // fallback: leave names as UUIDs
+        }
       }
 
       // Fetch and decrypt company names from customer_entities via raw Knex
@@ -257,9 +300,11 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       }
 
       for (const item of items) {
-        item.staffMemberIds = staffIdsByTicket.get(item.id) ?? []
+        const ids = staffIdsByTicket.get(item.id) ?? []
+        item.staffMemberIds = ids
+        ;(item as any).staffMemberNames = ids.map((id) => staffNameMap.get(id) ?? id)
         ;(item as any).machineServiceTypeIds = stIdsByTicket.get(item.id) ?? []
-        ;(item as any)._service_tickets = {
+        item._service_tickets = {
           companyName: item.customerEntityId ? (nameMap.get(item.customerEntityId) ?? null) : null,
         }
       }

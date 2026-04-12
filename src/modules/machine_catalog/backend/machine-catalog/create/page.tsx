@@ -5,12 +5,13 @@ import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { createCrud } from '@open-mercato/ui/backend/utils/crud'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { searchCatalogProducts } from '../../../components/catalogProductOptions'
 
 export default function CreateMachineProfilePage() {
   const t = useT()
 
   const fields = React.useMemo<CrudField[]>(() => [
-    { id: 'catalogProductId', label: t('machine_catalog.form.fields.catalogProductId', 'Catalog Product ID'), type: 'text', required: true, placeholder: 'UUID of catalog product' },
+    { id: 'catalogProductId', label: t('machine_catalog.form.fields.catalogProductId', 'Catalog Product'), type: 'combobox', required: true, placeholder: 'Search products...', loadOptions: searchCatalogProducts, allowCustomValues: false },
     { id: 'machineFamily', label: t('machine_catalog.form.fields.machineFamily', 'Machine Family'), type: 'text', placeholder: 'e.g. CNC Fräsmaschinen' },
     { id: 'modelCode', label: t('machine_catalog.form.fields.modelCode', 'Model Code'), type: 'text', placeholder: 'e.g. VMC-500' },
     { id: 'preventiveMaintenanceIntervalDays', label: t('machine_catalog.form.fields.preventiveMaintenanceIntervalDays', 'PM Interval (days)'), type: 'number' },
