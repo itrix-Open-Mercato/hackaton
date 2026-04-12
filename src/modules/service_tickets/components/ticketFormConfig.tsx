@@ -9,13 +9,11 @@ import ServiceTypePicker from './ServiceTypePicker'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
-  SERVICE_TYPE_I18N_KEYS,
-  SERVICE_TYPE_VALUES,
   STATUS_I18N_KEYS,
   STATUS_VALUES,
 } from '../lib/constants'
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   if (!apiKey || !address.trim()) return null
   try {
@@ -113,13 +111,6 @@ export function buildTicketFields(
 ): CrudField[] {
   const fields: CrudField[] = [
     {
-      id: 'service_type',
-      label: t('service_tickets.form.fields.serviceType.label'),
-      type: 'select',
-      required: true,
-      options: SERVICE_TYPE_VALUES.map((value) => ({ value, label: t(SERVICE_TYPE_I18N_KEYS[value]) })),
-    },
-    {
       id: 'priority',
       label: t('service_tickets.form.fields.priority.label'),
       type: 'select',
@@ -185,8 +176,8 @@ export function buildTicketGroups(
   options: BuildTicketFormConfigOptions,
 ): CrudFormGroup[] {
   const basicFields = options.includeStatus
-    ? ['service_type', 'status', 'priority', 'description']
-    : ['service_type', 'priority', 'description']
+    ? ['status', 'priority', 'description']
+    : ['priority', 'description']
 
   return [
     { id: 'basicInfo', title: t('service_tickets.form.groups.basicInfo'), column: 1, fields: basicFields },
