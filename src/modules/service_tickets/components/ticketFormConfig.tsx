@@ -5,6 +5,7 @@ import type { CrudField, CrudFormGroup, CrudCustomFieldRenderProps } from '@open
 import type { ServiceTicketListItem } from '../types'
 import CustomerCascadeSelect from './CustomerCascadeSelect'
 import MachineCascadeSelect from './MachineCascadeSelect'
+import ServiceTypePicker from './ServiceTypePicker'
 import {
   PRIORITY_I18N_KEYS,
   PRIORITY_VALUES,
@@ -99,6 +100,7 @@ export type TicketFormValues = {
   machine_instance_id: string
   order_id: string
   staff_member_ids: string[]
+  machine_service_type_ids: string[]
 }
 
 type BuildTicketFormConfigOptions = {
@@ -209,16 +211,22 @@ export function buildTicketGroups(
               emptyProfile: t('service_tickets.form.machineHints.emptyProfile'),
               machineModelLabel: t('service_tickets.form.machineHints.machineModel'),
               locationLabel: t('service_tickets.form.machineHints.location'),
-              serviceDurationLabel: t('service_tickets.form.machineHints.serviceDuration'),
               maintenanceIntervalLabel: t('service_tickets.form.machineHints.maintenanceInterval'),
-              serviceNotesLabel: t('service_tickets.form.machineHints.serviceNotes'),
-              partsTitle: t('service_tickets.form.machineHints.partsTitle'),
-              emptyParts: t('service_tickets.form.machineHints.emptyParts'),
+              serviceTypesTitle: t('service_tickets.form.machineHints.serviceTypesTitle'),
+              emptyServiceTypes: t('service_tickets.form.machineHints.emptyServiceTypes'),
             }}
-            setMachineId={(value) => setValue('machine_instance_id', value)}
+            setMachineId={(value) => {
+              setValue('machine_instance_id', value)
+              if (!value) setValue('machine_service_type_ids', [] as any)
+            }}
             setCustomerId={(value) => setValue('customer_entity_id', value)}
             setContactPersonId={(value) => setValue('contact_person_id', value)}
             setAddress={(value) => setValue('address', value)}
+          />
+          <ServiceTypePicker
+            machineInstanceId={String(values.machine_instance_id ?? '') || null}
+            selectedIds={(values as any).machine_service_type_ids ?? []}
+            onChange={(ids) => setValue('machine_service_type_ids', ids as any)}
           />
           <CustomerCascadeSelect
             companyId={String(values.customer_entity_id ?? '')}
@@ -256,6 +264,7 @@ export function createEmptyTicketFormValues(id = ''): TicketFormValues {
     machine_instance_id: '',
     order_id: '',
     staff_member_ids: [],
+    machine_service_type_ids: [],
   }
 }
 
@@ -288,5 +297,8 @@ export function mapTicketToFormValues(item: ServiceTicketListItem): TicketFormVa
     machine_instance_id: pick<string>('machineInstanceId', 'machine_instance_id') ?? '',
     order_id: pick<string>('orderId', 'order_id') ?? '',
     staff_member_ids: Array.isArray(staffMemberIds) ? staffMemberIds : [],
+    machine_service_type_ids: Array.isArray(pick<string[]>('machineServiceTypeIds', 'machine_service_type_ids'))
+      ? pick<string[]>('machineServiceTypeIds', 'machine_service_type_ids')!
+      : [],
   }
 }

@@ -57,7 +57,7 @@ jest.mock('../machineOptions', () => ({
   buildMachineLabel: (record: { instanceCode: string; serialNumber?: string | null; siteName?: string | null; locationLabel?: string | null }) =>
     [record.instanceCode, record.serialNumber, record.siteName, record.locationLabel].filter(Boolean).join(' • '),
   fetchMachineById: (...args: unknown[]) => mockFetchMachineById(...args),
-  fetchMachinePartTemplates: (...args: unknown[]) => mockFetchMachinePartTemplates(...args),
+  fetchMachineServiceTypes: (...args: unknown[]) => mockFetchMachinePartTemplates(...args),
   fetchMachineProfileByCatalogProductId: (...args: unknown[]) => mockFetchMachineProfileByCatalogProductId(...args),
   formatMachineAddress: (record: { siteName?: string | null; locationLabel?: string | null }) =>
     [record.siteName, record.locationLabel].filter(Boolean).join(' • ') || null,
@@ -80,11 +80,9 @@ const MESSAGES = {
   emptyProfile: 'No profile',
   machineModelLabel: 'Machine model',
   locationLabel: 'Suggested location',
-  serviceDurationLabel: 'Suggested service duration',
   maintenanceIntervalLabel: 'Preventive interval',
-  serviceNotesLabel: 'Service notes',
-  partsTitle: 'Suggested parts',
-  emptyParts: 'No parts',
+  serviceTypesTitle: 'Service Types',
+  emptyServiceTypes: 'No service types',
 }
 
 describe('MachineCascadeSelect', () => {

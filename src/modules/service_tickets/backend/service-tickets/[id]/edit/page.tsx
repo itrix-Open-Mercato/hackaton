@@ -78,30 +78,30 @@ export default function EditServiceTicketPage({ params }: { params?: { id?: stri
           <ErrorMessage label={err} />
         ) : (
           <CrudForm<TicketFormValues>
-            title={t('service_tickets.form.edit.title')}
-            backHref="/backend/service-tickets"
-            entityIds={[ENTITY_TYPE]}
-            fields={baseFields}
-            groups={groups}
-            initialValues={initial ?? fallbackInitialValues}
-            submitLabel={t('service_tickets.form.edit.submit')}
-            cancelHref="/backend/service-tickets"
-            successRedirect={successRedirect}
-            isLoading={loading}
-            loadingMessage={t('service_tickets.form.loading')}
-            onSubmit={async (values) => { await updateCrud('service_tickets/tickets', values) }}
-            onDelete={async () => {
-              if (!id) return
+              title={t('service_tickets.form.edit.title')}
+              backHref="/backend/service-tickets"
+              entityIds={[ENTITY_TYPE]}
+              fields={baseFields}
+              groups={groups}
+              initialValues={initial ?? fallbackInitialValues}
+              submitLabel={t('service_tickets.form.edit.submit')}
+              cancelHref="/backend/service-tickets"
+              successRedirect={successRedirect}
+              isLoading={loading}
+              loadingMessage={t('service_tickets.form.loading')}
+              onSubmit={async (values) => { await updateCrud('service_tickets/tickets', values) }}
+              onDelete={async () => {
+                if (!id) return
 
-              try {
-                await deleteCrud('service_tickets/tickets', String(id))
-                pushWithFlash(router, '/backend/service-tickets', t('service_tickets.form.flash.deleted'), 'success')
-              } catch (error) {
-                const message =
-                  error instanceof Error && error.message ? error.message : t('service_tickets.table.error.delete')
-                setErr(message)
-              }
-            }}
+                try {
+                  await deleteCrud('service_tickets/tickets', String(id))
+                  pushWithFlash(router, '/backend/service-tickets', t('service_tickets.form.flash.deleted'), 'success')
+                } catch (error) {
+                  const message =
+                    error instanceof Error && error.message ? error.message : t('service_tickets.table.error.delete')
+                  setErr(message)
+                }
+              }}
           />
         )}
       </PageBody>

@@ -20,19 +20,17 @@ export type MachineProfileRecord = {
   catalogProductId: string
   machineFamily: string | null
   modelCode: string | null
-  defaultServiceDurationMinutes: number | null
   preventiveMaintenanceIntervalDays: number | null
-  serviceNotes: string | null
+  defaultWarrantyMonths: number | null
 }
 
-export type MachinePartTemplateRecord = {
+export type MachineServiceTypeRecord = {
   id: string
-  partName: string
-  partCode: string | null
-  quantityDefault: string | null
-  quantityUnit: string | null
-  serviceContext: string | null
-  kitName: string | null
+  serviceType: string
+  defaultTeamSize: number | null
+  defaultServiceDurationMinutes: number | null
+  startupNotes: string | null
+  serviceNotes: string | null
 }
 
 export type MachineOption = {
@@ -63,13 +61,6 @@ function readNumber(record: JsonRecord, camelKey: string, snakeKey: string): num
 function readNullableObject(record: JsonRecord, camelKey: string, snakeKey: string): JsonRecord | null {
   const value = record[camelKey] ?? record[snakeKey]
   return isRecord(value) ? value : null
-}
-
-function readDecimal(record: JsonRecord, camelKey: string, snakeKey: string): string | null {
-  const value = record[camelKey] ?? record[snakeKey]
-  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
-  if (typeof value === 'string' && value.trim().length > 0) return value
-  return null
 }
 
 function toMachineLookupRecord(value: unknown): MachineLookupRecord | null {
@@ -103,31 +94,29 @@ function toMachineProfileRecord(value: unknown): MachineProfileRecord | null {
     catalogProductId,
     machineFamily: readString(value, 'machineFamily', 'machine_family'),
     modelCode: readString(value, 'modelCode', 'model_code'),
-    defaultServiceDurationMinutes: readNumber(value, 'defaultServiceDurationMinutes', 'default_service_duration_minutes'),
     preventiveMaintenanceIntervalDays: readNumber(
       value,
       'preventiveMaintenanceIntervalDays',
       'preventive_maintenance_interval_days',
     ),
-    serviceNotes: readString(value, 'serviceNotes', 'service_notes'),
+    defaultWarrantyMonths: readNumber(value, 'defaultWarrantyMonths', 'default_warranty_months'),
   }
 }
 
-function toMachinePartTemplateRecord(value: unknown): MachinePartTemplateRecord | null {
+function toMachineServiceTypeRecord(value: unknown): MachineServiceTypeRecord | null {
   if (!isRecord(value)) return null
 
   const id = readString(value, 'id', 'id')
-  const partName = readString(value, 'partName', 'part_name')
-  if (!id || !partName) return null
+  const serviceType = readString(value, 'serviceType', 'service_type')
+  if (!id || !serviceType) return null
 
   return {
     id,
-    partName,
-    partCode: readString(value, 'partCode', 'part_code'),
-    quantityDefault: readDecimal(value, 'quantityDefault', 'quantity_default'),
-    quantityUnit: readString(value, 'quantityUnit', 'quantity_unit'),
-    serviceContext: readString(value, 'serviceContext', 'service_context'),
-    kitName: readString(value, 'kitName', 'kit_name'),
+    serviceType,
+    defaultTeamSize: readNumber(value, 'defaultTeamSize', 'default_team_size'),
+    defaultServiceDurationMinutes: readNumber(value, 'defaultServiceDurationMinutes', 'default_service_duration_minutes'),
+    startupNotes: readString(value, 'startupNotes', 'startup_notes'),
+    serviceNotes: readString(value, 'serviceNotes', 'service_notes'),
   }
 }
 
@@ -229,17 +218,17 @@ export async function fetchMachineProfileByCatalogProductId(catalogProductId: st
   )
 }
 
-export async function fetchMachinePartTemplates(machineProfileId: string): Promise<MachinePartTemplateRecord[]> {
+export async function fetchMachineServiceTypes(machineProfileId: string): Promise<MachineServiceTypeRecord[]> {
   const params = new URLSearchParams({
     machineProfileId,
-    pageSize: '20',
+    pageSize: '50',
     sortField: 'sortOrder',
     sortDir: 'asc',
   })
 
-  const payload = await readApiResultOrThrow<Record<string, unknown>>(`/api/machine_catalog/part-templates?${params.toString()}`)
+  const payload = await readApiResultOrThrow<Record<string, unknown>>(`/api/machine_catalog/service-types?${params.toString()}`)
 
   return readItems(payload)
-    .map(toMachinePartTemplateRecord)
-    .filter((item): item is MachinePartTemplateRecord => item !== null)
+    .map(toMachineServiceTypeRecord)
+    .filter((item): item is MachineServiceTypeRecord => item !== null)
 }

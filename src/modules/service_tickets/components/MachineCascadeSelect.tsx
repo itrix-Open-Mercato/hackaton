@@ -6,14 +6,14 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import {
   buildMachineLabel,
   fetchMachineById,
-  fetchMachinePartTemplates,
+  fetchMachineServiceTypes,
   fetchMachineProfileByCatalogProductId,
   formatMachineAddress,
   mergeMachineOptions,
   searchMachines,
   type MachineLookupRecord,
   type MachineOption,
-  type MachinePartTemplateRecord,
+  type MachineServiceTypeRecord,
   type MachineProfileRecord,
 } from './machineOptions'
 
@@ -23,11 +23,9 @@ type MachineCascadeSelectMessages = {
   emptyProfile: string
   machineModelLabel: string
   locationLabel: string
-  serviceDurationLabel: string
   maintenanceIntervalLabel: string
-  serviceNotesLabel: string
-  partsTitle: string
-  emptyParts: string
+  serviceTypesTitle: string
+  emptyServiceTypes: string
 }
 
 type MachineCascadeSelectProps = {
@@ -59,13 +57,13 @@ function formatInterval(days: number | null): string | null {
   return `${days} d`
 }
 
-function formatPartTemplate(part: MachinePartTemplateRecord): string {
-  const quantity = part.quantityDefault ? `${part.quantityDefault}${part.quantityUnit ? ` ${part.quantityUnit}` : ''}` : null
-  const meta = [part.kitName, part.serviceContext, part.partCode, quantity]
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .join(' • ')
+function formatServiceType(st: MachineServiceTypeRecord): string {
+  const meta = [
+    st.defaultTeamSize != null ? `Team: ${st.defaultTeamSize}` : null,
+    st.defaultServiceDurationMinutes != null ? formatDuration(st.defaultServiceDurationMinutes) : null,
+  ].filter(Boolean).join(' • ')
 
-  return meta ? `${part.partName} (${meta})` : part.partName
+  return meta ? `${st.serviceType} (${meta})` : st.serviceType
 }
 
 export default function MachineCascadeSelect({
@@ -85,7 +83,7 @@ export default function MachineCascadeSelect({
   const [machineOptions, setMachineOptions] = React.useState<MachineOption[]>([])
   const [selectedMachine, setSelectedMachine] = React.useState<MachineLookupRecord | null>(null)
   const [profile, setProfile] = React.useState<MachineProfileRecord | null>(null)
-  const [partTemplates, setPartTemplates] = React.useState<MachinePartTemplateRecord[]>([])
+  const [serviceTypes, setServiceTypes] = React.useState<MachineServiceTypeRecord[]>([])
   const [loadingHints, setLoadingHints] = React.useState(false)
 
   React.useEffect(() => {
@@ -129,7 +127,7 @@ export default function MachineCascadeSelect({
     async function loadHints() {
       if (!selectedMachine?.catalogProductId) {
         setProfile(null)
-        setPartTemplates([])
+        setServiceTypes([])
         return
       }
 
@@ -142,18 +140,18 @@ export default function MachineCascadeSelect({
         setProfile(nextProfile)
 
         if (!nextProfile) {
-          setPartTemplates([])
+          setServiceTypes([])
           return
         }
 
-        const nextParts = await fetchMachinePartTemplates(nextProfile.id)
+        const nextServiceTypes = await fetchMachineServiceTypes(nextProfile.id)
         if (!cancelled) {
-          setPartTemplates(nextParts)
+          setServiceTypes(nextServiceTypes)
         }
       } catch {
         if (!cancelled) {
           setProfile(null)
-          setPartTemplates([])
+          setServiceTypes([])
         }
       } finally {
         if (!cancelled) setLoadingHints(false)
@@ -237,7 +235,6 @@ export default function MachineCascadeSelect({
   }, [profile])
 
   const suggestedLocation = selectedMachine ? formatMachineAddress(selectedMachine) : null
-  const duration = formatDuration(profile?.defaultServiceDurationMinutes ?? null)
   const interval = formatInterval(profile?.preventiveMaintenanceIntervalDays ?? null)
   const machineDisplayValue = machineId ? resolveMachineLabel(machineId) : ''
   const showHints = Boolean(machineId)
@@ -284,34 +281,27 @@ export default function MachineCascadeSelect({
                     <span className="font-medium">{messages.locationLabel}:</span> {suggestedLocation}
                   </div>
                 ) : null}
-                {duration ? (
-                  <div>
-                    <span className="font-medium">{messages.serviceDurationLabel}:</span> {duration}
-                  </div>
-                ) : null}
                 {interval ? (
                   <div>
                     <span className="font-medium">{messages.maintenanceIntervalLabel}:</span> {interval}
-                  </div>
-                ) : null}
-                {profile?.serviceNotes ? (
-                  <div>
-                    <span className="font-medium">{messages.serviceNotesLabel}:</span> {profile.serviceNotes}
                   </div>
                 ) : null}
                 {!profile && <div className="text-muted-foreground">{messages.emptyProfile}</div>}
               </div>
 
               <div className="space-y-1">
-                <div className="font-medium">{messages.partsTitle}</div>
-                {partTemplates.length > 0 ? (
+                <div className="font-medium">{messages.serviceTypesTitle}</div>
+                {serviceTypes.length > 0 ? (
                   <ul className="list-disc space-y-1 pl-5">
-                    {partTemplates.map((part) => (
-                      <li key={part.id}>{formatPartTemplate(part)}</li>
+                    {serviceTypes.map((st) => (
+                      <li key={st.id}>
+                        <span className="font-medium">{formatServiceType(st)}</span>
+                        {st.serviceNotes ? <span className="text-muted-foreground"> — {st.serviceNotes}</span> : null}
+                      </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="text-muted-foreground">{messages.emptyParts}</div>
+                  <div className="text-muted-foreground">{messages.emptyServiceTypes}</div>
                 )}
               </div>
             </div>
