@@ -24,6 +24,14 @@ type ServiceTicketPrefill = {
   customer_entity_id: string | null
   contact_person_id: string | null
   machine_asset_id: string | null
+  machine_instance_id?: string | null
+  sales_channel_id?: string | null
+  _llm_extracted?: boolean
+  _confidence?: number | null
+  _source?: 'transcript' | 'summary' | 'basic'
+  _customer_name?: string | null
+  _contact_name?: string | null
+  _machine_info?: string | null
 }
 
 function formatDateTime(value: string | null): string {
@@ -50,7 +58,9 @@ function buildTicketHref(prefill: ServiceTicketPrefill): string {
   if (prefill.visit_date) params.set('visit_date', prefill.visit_date)
   if (prefill.customer_entity_id) params.set('customer_entity_id', prefill.customer_entity_id)
   if (prefill.contact_person_id) params.set('contact_person_id', prefill.contact_person_id)
-  if (prefill.machine_asset_id) params.set('machine_asset_id', prefill.machine_asset_id)
+  if (prefill.machine_instance_id) params.set('machine_instance_id', prefill.machine_instance_id)
+  else if (prefill.machine_asset_id) params.set('machine_asset_id', prefill.machine_asset_id)
+  if (prefill.sales_channel_id) params.set('sales_channel_id', prefill.sales_channel_id)
   return `/backend/service-tickets/create?${params.toString()}`
 }
 
@@ -88,7 +98,35 @@ export default function PhoneCallDetail({ callId }: { callId: string }) {
     if (!data) return
     setIsCreatingTicket(true)
     try {
-      const prefill = await readApiResultOrThrow<ServiceTicketPrefill>(`/api/phone_calls/calls/${data.id}/service-ticket-prefill`)
+      // Use LLM extraction endpoint — falls back to basic prefill internally if LLM not configured
+      const hasArtifacts = Boolean(data.activeTranscriptVersionId || data.activeSummaryVersionId)
+      let prefill: ServiceTicketPrefill
+
+      if (hasArtifacts) {
+        prefill = await readApiResultOrThrow<ServiceTicketPrefill>(
+          `/api/phone_calls/calls/${data.id}/extract-ticket-fields`,
+          { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' },
+        )
+      } else {
+        prefill = await readApiResultOrThrow<ServiceTicketPrefill>(
+          `/api/phone_calls/calls/${data.id}/service-ticket-prefill`,
+        )
+      }
+
+      if (prefill._llm_extracted) {
+        const confidencePct = prefill._confidence != null ? Math.round(prefill._confidence * 100) : null
+        const sourceLabel = prefill._source === 'transcript'
+          ? t('phone_calls.detail.extraction.sourceTranscript')
+          : t('phone_calls.detail.extraction.sourceSummary')
+        const msg = confidencePct != null
+          ? t('phone_calls.detail.extraction.successWithConfidence', `AI extracted from ${sourceLabel} (${confidencePct}% confidence)`)
+              .replace('{source}', sourceLabel)
+              .replace('{confidence}', String(confidencePct))
+          : t('phone_calls.detail.extraction.success', `AI extracted from ${sourceLabel}`)
+              .replace('{source}', sourceLabel)
+        flash(msg, 'success')
+      }
+
       router.push(buildTicketHref(prefill))
     } catch (err) {
       const message = err instanceof Error && err.message ? err.message : t('phone_calls.detail.error.prefill')
@@ -152,7 +190,11 @@ export default function PhoneCallDetail({ callId }: { callId: string }) {
               </Button>
             ) : (
               <Button onClick={createTicketFromCall} disabled={isCreatingTicket}>
-                {isCreatingTicket ? t('phone_calls.detail.actions.creatingTicket') : t('phone_calls.detail.actions.createTicket')}
+                {isCreatingTicket
+                  ? (data.activeTranscriptVersionId || data.activeSummaryVersionId)
+                    ? t('phone_calls.detail.actions.extractingTicket')
+                    : t('phone_calls.detail.actions.creatingTicket')
+                  : t('phone_calls.detail.actions.createTicket')}
               </Button>
             )}
             <Button

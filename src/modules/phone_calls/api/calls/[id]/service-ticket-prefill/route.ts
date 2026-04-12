@@ -21,6 +21,7 @@ const prefillResponseSchema = z.object({
   customer_entity_id: z.string().uuid().nullable(),
   contact_person_id: z.string().uuid().nullable(),
   machine_asset_id: z.string().uuid().nullable(),
+  sales_channel_id: z.string().uuid().nullable(),
 })
 
 function readServiceLabel(serviceData: Record<string, unknown> | null | undefined, key: string): string | null {
@@ -99,6 +100,7 @@ export async function GET(req: Request, context: { params?: { id?: string } }) {
       customer_entity_id: call.customerEntityId ?? null,
       contact_person_id: call.contactPersonId ?? null,
       machine_asset_id: null,
+      sales_channel_id: null,
     })
   } catch (err) {
     if (err instanceof CrudHttpError) return NextResponse.json(err.body, { status: err.status })
