@@ -13,11 +13,13 @@ function createMockEm(params: {
   reservations?: Array<any>
   assignments?: Array<any>
   technicianRows?: Array<{ id: string; display_name: string | null; first_name: string | null; last_name: string | null }>
+  overlapRows?: Array<{ technician_id: string }>
 }) {
   const technicians = [...(params.technicians ?? [])]
   const reservations = [...(params.reservations ?? [])]
   const assignments = [...(params.assignments ?? [])]
   const technicianRows = [...(params.technicianRows ?? [])]
+  const overlapRows = [...(params.overlapRows ?? [])]
 
   const knexFactory = () => {
     const tableFn = jest.fn(() => ({
@@ -73,6 +75,7 @@ function createMockEm(params: {
     }),
     flush: jest.fn().mockResolvedValue(undefined),
     getConnection: jest.fn(() => ({
+      execute: jest.fn().mockResolvedValue(overlapRows),
       getKnex: jest.fn(() => knexFactory()),
     })),
     getKnex: jest.fn(() => knexFactory()),
@@ -119,6 +122,38 @@ describe('ticketReservations helper', () => {
     expect(assignments[0]).toMatchObject({
       technicianId: 'tech-1',
     })
+  })
+
+  it('defaults an invalid visit end date to a one-hour reservation window', async () => {
+    const { em, reservations } = createMockEm({
+      technicians: [{
+        id: 'tech-1',
+        staffMemberId: 'staff-1',
+        tenantId: 'tenant-1',
+        organizationId: 'org-1',
+        deletedAt: null,
+        isActive: true,
+      }],
+    })
+
+    await syncTicketReservations({
+      em,
+      ticket: {
+        id: 'ticket-1',
+        ticketNumber: 'SRV-000001',
+        status: 'scheduled',
+        visitDate: new Date('2026-04-12T09:00:00.000Z'),
+        visitEndDate: new Date('2026-04-12T09:00:00.000Z'),
+        address: 'Main Street',
+        tenantId: 'tenant-1',
+        organizationId: 'org-1',
+      },
+      staffMemberIds: ['staff-1'],
+    })
+
+    expect(reservations).toHaveLength(1)
+    expect((reservations[0].startsAt as Date).toISOString()).toBe('2026-04-12T09:00:00.000Z')
+    expect((reservations[0].endsAt as Date).toISOString()).toBe('2026-04-12T10:00:00.000Z')
   })
 
   it('cancels source-linked reservations when the ticket becomes inactive for scheduling', async () => {
@@ -184,5 +219,37 @@ describe('ticketReservations helper', () => {
         sourceTicketId: 'ticket-1',
       }),
     ])
+  })
+
+  it('rejects ticket reservation sync when a blocking availability marker overlaps the visit window', async () => {
+    const { em, reservations, assignments } = createMockEm({
+      technicians: [{
+        id: 'tech-1',
+        staffMemberId: 'staff-1',
+        tenantId: 'tenant-1',
+        organizationId: 'org-1',
+        deletedAt: null,
+        isActive: true,
+      }],
+      overlapRows: [{ technician_id: 'tech-1' }],
+    })
+
+    await expect(syncTicketReservations({
+      em,
+      ticket: {
+        id: 'ticket-1',
+        ticketNumber: 'SRV-000001',
+        status: 'scheduled',
+        visitDate: new Date('2026-04-12T09:00:00.000Z'),
+        visitEndDate: new Date('2026-04-12T10:00:00.000Z'),
+        address: 'Main Street',
+        tenantId: 'tenant-1',
+        organizationId: 'org-1',
+      },
+      staffMemberIds: ['staff-1'],
+    })).rejects.toThrow()
+
+    expect(reservations).toHaveLength(0)
+    expect(assignments).toHaveLength(0)
   })
 })

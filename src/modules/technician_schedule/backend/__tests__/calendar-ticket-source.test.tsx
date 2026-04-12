@@ -7,6 +7,7 @@ import TechnicianSchedulePage from '../technician-schedule/page'
 
 const mockUseQuery = jest.fn()
 const mockInvalidateQueries = jest.fn()
+const mockScheduleView = jest.fn()
 
 jest.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
@@ -72,14 +73,16 @@ jest.mock('@open-mercato/ui/backend/confirm-dialog', () => ({
 }))
 
 jest.mock('@open-mercato/ui/backend/schedule', () => ({
-  ScheduleView: ({ items, onItemClick }: { items: Array<{ metadata?: { reservation?: unknown } }>; onItemClick: (item: { metadata?: { reservation?: unknown } }) => void }) => (
-    <button type="button" onClick={() => onItemClick(items[0])}>Open reservation</button>
-  ),
+  ScheduleView: (props: { items: Array<{ metadata?: { reservation?: unknown } }>; onItemClick: (item: { metadata?: { reservation?: unknown } }) => void }) => {
+    mockScheduleView(props)
+    return <button type="button" onClick={() => props.onItemClick(props.items[0])}>Open reservation</button>
+  },
 }))
 
 describe('technician schedule ticket source', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockScheduleView.mockReset()
     mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
       if (queryKey[0] === 'technician-schedule-technicians') {
         return {
@@ -129,5 +132,55 @@ describe('technician schedule ticket source', () => {
     fireEvent.click(screen.getByText('Open reservation'))
 
     expect(screen.getByText('ticket-1')).toHaveAttribute('href', '/backend/service-tickets/ticket-1/edit')
+  })
+
+  it('expands zero-duration reservations so week view can render them visibly', () => {
+    mockUseQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => {
+      if (queryKey[0] === 'technician-schedule-technicians') {
+        return {
+          data: {
+            items: [{ id: 'tech-1', display_name: 'Jane Doe' }],
+          },
+          isLoading: false,
+        }
+      }
+
+      if (queryKey[0] === 'technician-schedule-reservations') {
+        return {
+          data: {
+            items: [{
+              id: 'res-1',
+              title: 'Service ticket SRV-000001',
+              reservation_type: 'client_visit',
+              status: 'auto_confirmed',
+              source_type: 'service_ticket',
+              source_ticket_id: 'ticket-1',
+              source_order_id: null,
+              starts_at: '2026-04-12T09:00:00.000Z',
+              ends_at: '2026-04-12T09:00:00.000Z',
+              vehicle_id: null,
+              vehicle_label: null,
+              customer_name: 'Acme',
+              address: 'Main Street',
+              notes: null,
+              technicians: ['tech-1'],
+              technician_names: ['Jane Doe'],
+            }],
+            totalCount: 1,
+            page: 1,
+            pageSize: 100,
+          },
+          isLoading: false,
+        }
+      }
+
+      return { data: null, isLoading: false }
+    })
+
+    render(<TechnicianSchedulePage />)
+
+    const scheduleProps = mockScheduleView.mock.calls.at(-1)?.[0]
+    expect(scheduleProps.items[0].startsAt.toISOString()).toBe('2026-04-12T09:00:00.000Z')
+    expect(scheduleProps.items[0].endsAt.toISOString()).toBe('2026-04-12T10:00:00.000Z')
   })
 })

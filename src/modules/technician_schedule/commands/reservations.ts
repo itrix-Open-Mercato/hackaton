@@ -23,12 +23,15 @@ type ReservationSnapshot = {
   organizationId: string
   title: string
   reservationType: TechnicianReservation['reservationType']
+  entryKind: TechnicianReservation['entryKind']
+  availabilityType: TechnicianReservation['availabilityType']
   status: TechnicianReservation['status']
   sourceType: TechnicianReservation['sourceType']
   sourceTicketId: string | null
   sourceOrderId: string | null
   startsAt: string
   endsAt: string
+  allDay: boolean
   vehicleId: string | null
   vehicleLabel: string | null
   customerName: string | null
@@ -46,22 +49,34 @@ type ReservationUndoPayload = {
 
 function buildReservationTitle(input: {
   title?: string | null
-  reservationType: TechnicianReservation['reservationType']
+  reservationType?: TechnicianReservation['reservationType']
+  entryKind?: TechnicianReservation['entryKind']
+  availabilityType?: TechnicianReservation['availabilityType']
   customerName?: string | null
 }): string {
   const trimmed = typeof input.title === 'string' ? input.title.trim() : ''
   if (trimmed.length > 0) return trimmed
 
-  const typeLabelMap: Record<TechnicianReservation['reservationType'], string> = {
+  if (input.entryKind === 'availability') {
+    const availabilityLabelMap: Record<NonNullable<TechnicianReservation['availabilityType']>, string> = {
+      trip: 'Trip',
+      unavailable: 'Unavailable',
+      holiday: 'Holiday',
+    }
+    return input.availabilityType ? availabilityLabelMap[input.availabilityType] : 'Availability'
+  }
+
+  const typeLabelMap: Record<NonNullable<TechnicianReservation['reservationType']>, string> = {
     client_visit: 'Client visit',
     internal_work: 'Internal work',
     leave: 'Leave',
     training: 'Training',
   }
 
+  const reservationType = input.reservationType ?? 'internal_work'
   return input.customerName?.trim()
-    ? `${typeLabelMap[input.reservationType]} - ${input.customerName.trim()}`
-    : typeLabelMap[input.reservationType]
+    ? `${typeLabelMap[reservationType]} - ${input.customerName.trim()}`
+    : typeLabelMap[reservationType]
 }
 
 function buildScopeFilter(ctx: CommandRuntimeContext): Record<string, unknown> {
@@ -101,12 +116,15 @@ async function loadReservationSnapshot(em: EntityManager, id: string): Promise<R
     organizationId: reservation.organizationId,
     title: reservation.title,
     reservationType: reservation.reservationType,
+    entryKind: reservation.entryKind,
+    availabilityType: reservation.availabilityType ?? null,
     status: reservation.status,
     sourceType: reservation.sourceType,
     sourceTicketId: reservation.sourceTicketId ?? null,
     sourceOrderId: reservation.sourceOrderId ?? null,
     startsAt: reservation.startsAt.toISOString(),
     endsAt: reservation.endsAt.toISOString(),
+    allDay: reservation.allDay,
     vehicleId: reservation.vehicleId ?? null,
     vehicleLabel: reservation.vehicleLabel ?? null,
     customerName: reservation.customerName ?? null,
@@ -144,12 +162,15 @@ function applySnapshotToReservation(
   reservation.organizationId = snapshot.organizationId
   reservation.title = snapshot.title
   reservation.reservationType = snapshot.reservationType
+  reservation.entryKind = snapshot.entryKind
+  reservation.availabilityType = snapshot.availabilityType
   reservation.status = snapshot.status
   reservation.sourceType = snapshot.sourceType
   reservation.sourceTicketId = snapshot.sourceTicketId
   reservation.sourceOrderId = snapshot.sourceOrderId
   reservation.startsAt = new Date(snapshot.startsAt)
   reservation.endsAt = new Date(snapshot.endsAt)
+  reservation.allDay = snapshot.allDay
   reservation.vehicleId = snapshot.vehicleId
   reservation.vehicleLabel = snapshot.vehicleLabel
   reservation.customerName = snapshot.customerName
@@ -182,7 +203,7 @@ async function replaceAssignments(
   })
 }
 
-const createReservationCommand: CommandHandler<TechnicianReservationCreateInput, { reservationId: string }> = {
+export const createReservationCommand: CommandHandler<TechnicianReservationCreateInput, { reservationId: string }> = {
   id: 'technician_schedule.reservation.create',
   async execute(rawInput, ctx) {
     const parsed = technicianReservationCreateSchema.parse(rawInput)
@@ -212,13 +233,16 @@ const createReservationCommand: CommandHandler<TechnicianReservationCreateInput,
       tenantId: parsed.tenantId,
       organizationId: parsed.organizationId,
       title: buildReservationTitle(parsed),
-      reservationType: parsed.reservationType,
+      reservationType: parsed.reservationType ?? null,
+      entryKind: parsed.entryKind ?? 'reservation',
+      availabilityType: parsed.availabilityType ?? null,
       status: parsed.status ?? 'confirmed',
       sourceType: parsed.sourceType ?? 'manual',
       sourceTicketId: parsed.sourceTicketId ?? null,
       sourceOrderId: parsed.sourceOrderId ?? null,
       startsAt,
       endsAt,
+      allDay: parsed.allDay ?? false,
       vehicleId: parsed.vehicleId ?? null,
       vehicleLabel: parsed.vehicleLabel ?? null,
       customerName: parsed.customerName ?? null,
@@ -287,7 +311,7 @@ const createReservationCommand: CommandHandler<TechnicianReservationCreateInput,
   },
 }
 
-const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput, { reservationId: string }> = {
+export const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput, { reservationId: string }> = {
   id: 'technician_schedule.reservation.update',
   async prepare(rawInput, ctx) {
     const parsed = technicianReservationUpdateSchema.parse(rawInput)
@@ -325,20 +349,31 @@ const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput,
       em,
       [
         () => {
-          if (parsed.title !== undefined || parsed.reservationType !== undefined || parsed.customerName !== undefined) {
+          if (
+            parsed.title !== undefined ||
+            parsed.reservationType !== undefined ||
+            parsed.customerName !== undefined ||
+            parsed.entryKind !== undefined ||
+            parsed.availabilityType !== undefined
+          ) {
             reservation.title = buildReservationTitle({
               title: parsed.title ?? reservation.title,
               reservationType: parsed.reservationType ?? reservation.reservationType,
+              entryKind: parsed.entryKind ?? reservation.entryKind,
+              availabilityType: parsed.availabilityType ?? reservation.availabilityType,
               customerName: parsed.customerName ?? reservation.customerName,
             })
           }
           if (parsed.reservationType !== undefined) reservation.reservationType = parsed.reservationType
+          if (parsed.entryKind !== undefined) reservation.entryKind = parsed.entryKind
+          if (parsed.availabilityType !== undefined) reservation.availabilityType = parsed.availabilityType ?? null
           if (parsed.status !== undefined) reservation.status = parsed.status
           if (parsed.sourceType !== undefined) reservation.sourceType = parsed.sourceType
           if (parsed.sourceTicketId !== undefined) reservation.sourceTicketId = parsed.sourceTicketId ?? null
           if (parsed.sourceOrderId !== undefined) reservation.sourceOrderId = parsed.sourceOrderId ?? null
           if (parsed.startsAt !== undefined) reservation.startsAt = nextStartsAt
           if (parsed.endsAt !== undefined) reservation.endsAt = nextEndsAt
+          if (parsed.allDay !== undefined) reservation.allDay = parsed.allDay
           if (parsed.vehicleId !== undefined) reservation.vehicleId = parsed.vehicleId ?? null
           if (parsed.vehicleLabel !== undefined) reservation.vehicleLabel = parsed.vehicleLabel ?? null
           if (parsed.customerName !== undefined) reservation.customerName = parsed.customerName ?? null
@@ -389,12 +424,15 @@ const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput,
         organizationId: before.organizationId,
         title: before.title,
         reservationType: before.reservationType,
+        entryKind: before.entryKind,
+        availabilityType: before.availabilityType,
         status: before.status,
         sourceType: before.sourceType,
         sourceTicketId: before.sourceTicketId,
         sourceOrderId: before.sourceOrderId,
         startsAt: new Date(before.startsAt),
         endsAt: new Date(before.endsAt),
+        allDay: before.allDay,
         vehicleId: before.vehicleId,
         vehicleLabel: before.vehicleLabel,
         customerName: before.customerName,
@@ -423,7 +461,7 @@ const updateReservationCommand: CommandHandler<TechnicianReservationUpdateInput,
   },
 }
 
-const cancelReservationCommand: CommandHandler<CancelReservationInput, { reservationId: string }> = {
+export const cancelReservationCommand: CommandHandler<CancelReservationInput, { reservationId: string }> = {
   id: 'technician_schedule.reservation.cancel',
   async prepare(rawInput, ctx) {
     const parsed = cancelReservationSchema.parse(rawInput)
@@ -478,7 +516,7 @@ const cancelReservationCommand: CommandHandler<CancelReservationInput, { reserva
   },
 }
 
-const deleteReservationCommand: CommandHandler<{ id: string }, { reservationId: string }> = {
+export const deleteReservationCommand: CommandHandler<{ id: string }, { reservationId: string }> = {
   id: 'technician_schedule.reservation.delete',
   async prepare(input, ctx) {
     const id = typeof input?.id === 'string' ? input.id : null
@@ -527,12 +565,15 @@ const deleteReservationCommand: CommandHandler<{ id: string }, { reservationId: 
         organizationId: before.organizationId,
         title: before.title,
         reservationType: before.reservationType,
+        entryKind: before.entryKind,
+        availabilityType: before.availabilityType,
         status: before.status,
         sourceType: before.sourceType,
         sourceTicketId: before.sourceTicketId,
         sourceOrderId: before.sourceOrderId,
         startsAt: new Date(before.startsAt),
         endsAt: new Date(before.endsAt),
+        allDay: before.allDay,
         vehicleId: before.vehicleId,
         vehicleLabel: before.vehicleLabel,
         customerName: before.customerName,

@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { TechnicianReservation, TechnicianReservationTechnician } from '../../technician_schedule/data/entities'
+import { checkReservationOverlap } from '../../technician_schedule/lib/overlapCheck'
 import { Technician } from '../../technicians/data/entities'
 import type { ServiceTicket } from '../data/entities'
 
@@ -19,10 +21,19 @@ export type TicketReservationSummary = {
   sourceTicketId: string | null
 }
 
+type TechnicianLookupRow = {
+  id: string
+  display_name: string | null
+  first_name: string | null
+  last_name: string | null
+}
+
 function resolveReservationWindow(ticket: Pick<ServiceTicket, 'visitDate' | 'visitEndDate'>): { startsAt: Date; endsAt: Date } | null {
   if (!ticket.visitDate) return null
   const startsAt = ticket.visitDate
-  const endsAt = ticket.visitEndDate ?? new Date(ticket.visitDate.getTime() + DEFAULT_RESERVATION_DURATION_MS)
+  const endsAt = ticket.visitEndDate && ticket.visitEndDate.getTime() > ticket.visitDate.getTime()
+    ? ticket.visitEndDate
+    : new Date(ticket.visitDate.getTime() + DEFAULT_RESERVATION_DURATION_MS)
   return { startsAt, endsAt }
 }
 
@@ -173,6 +184,27 @@ export async function syncTicketReservations(params: {
   const startsAt = reservationWindow.startsAt
   const endsAt = reservationWindow.endsAt
 
+  const conflictingTechnicianIds = new Set<string>()
+  for (const technicianId of desiredTechnicianIds) {
+    const reservation = existingReservationByTechnicianId.get(technicianId)
+    const conflict = await checkReservationOverlap(em, {
+      tenantId: ticket.tenantId,
+      organizationId: ticket.organizationId,
+      technicianIds: [technicianId],
+      startsAt,
+      endsAt,
+      excludeReservationId: reservation?.id ?? null,
+    })
+    conflict.conflictingTechnicianIds.forEach((id) => conflictingTechnicianIds.add(id))
+  }
+
+  if (conflictingTechnicianIds.size > 0) {
+    throw new CrudHttpError(409, {
+      error: 'OVERLAP_CONFLICT',
+      conflictingTechnicianIds: [...conflictingTechnicianIds],
+    })
+  }
+
   for (const reservation of existingReservations) {
     const technicianId = (assignmentsByReservation.get(reservation.id) ?? [])[0] ?? null
     if (!technicianId || duplicateReservations.includes(reservation) || !desiredTechnicianIds.has(technicianId)) {
@@ -187,11 +219,14 @@ export async function syncTicketReservations(params: {
     if (reservation) {
       reservation.title = title
       reservation.reservationType = 'client_visit'
+      reservation.entryKind = 'reservation'
+      reservation.availabilityType = null
       reservation.status = 'auto_confirmed'
       reservation.sourceType = 'service_ticket'
       reservation.sourceTicketId = ticket.id
       reservation.startsAt = startsAt
       reservation.endsAt = endsAt
+      reservation.allDay = false
       reservation.address = ticket.address ?? null
       reservation.isActive = true
       reservation.deletedAt = null
@@ -206,12 +241,15 @@ export async function syncTicketReservations(params: {
       organizationId: ticket.organizationId,
       title,
       reservationType: 'client_visit',
+      entryKind: 'reservation',
+      availabilityType: null,
       status: 'auto_confirmed',
       sourceType: 'service_ticket',
       sourceTicketId: ticket.id,
       sourceOrderId: null,
       startsAt,
       endsAt,
+      allDay: false,
       address: ticket.address ?? null,
       isActive: true,
       createdAt: new Date(),
@@ -280,16 +318,10 @@ export async function loadTicketReservationSummaries(params: {
   const technicianNameById = new Map<string, string>()
 
   if (allTechnicianIds.length > 0) {
-    type TechnicianRow = {
-      id: string
-      display_name: string | null
-      first_name: string | null
-      last_name: string | null
-    }
     const knex = (params.em as any).getConnection().getKnex()
-    const rows = await knex<TechnicianRow>('technicians')
+    const rows = await knex('technicians')
       .select('id', 'display_name', 'first_name', 'last_name')
-      .whereIn('id', allTechnicianIds)
+      .whereIn('id', allTechnicianIds) as TechnicianLookupRow[]
 
     rows.forEach((row) => {
       const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ').trim()

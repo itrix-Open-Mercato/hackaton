@@ -27,6 +27,7 @@ import {
   technicianReservationUpdateSchema,
 } from '../../data/validators'
 import { TECHNICIAN_SCHEDULE_RESERVATION_ENTITY_TYPE } from '../../lib/crud'
+import { toIsoDateTimeString } from '../../lib/dateTime'
 
 const F = {
   id: 'id',
@@ -34,12 +35,15 @@ const F = {
   tenant_id: 'tenant_id',
   title: 'title',
   reservation_type: 'reservation_type',
+  entry_kind: 'entry_kind',
+  availability_type: 'availability_type',
   status: 'status',
   source_type: 'source_type',
   source_ticket_id: 'source_ticket_id',
   source_order_id: 'source_order_id',
   starts_at: 'starts_at',
   ends_at: 'ends_at',
+  all_day: 'all_day',
   vehicle_id: 'vehicle_id',
   vehicle_label: 'vehicle_label',
   customer_name: 'customer_name',
@@ -68,6 +72,8 @@ const listSchema = z.object({
   technicianId: z.string().uuid().optional(),
   reservationType: z.string().optional(),
   reservationTypes: z.string().optional(),
+  entryKind: z.enum(['reservation', 'availability']).optional(),
+  availabilityType: z.enum(['trip', 'unavailable', 'holiday']).optional(),
   status: z.string().optional(),
   startsAtFrom: z.string().datetime({ offset: true }).optional(),
   startsAtTo: z.string().datetime({ offset: true }).optional(),
@@ -83,13 +89,16 @@ type ReservationRow = {
   organization_id: string
   tenant_id: string
   title: string
-  reservation_type: string
+  reservation_type: string | null
+  entry_kind: string
+  availability_type: string | null
   status: string
   source_type: string
   source_ticket_id: string | null
   source_order_id: string | null
   starts_at: Date
   ends_at: Date
+  all_day: boolean
   vehicle_id: string | null
   vehicle_label: string | null
   customer_name: string | null
@@ -101,18 +110,28 @@ type ReservationRow = {
   technicians?: string[]
 }
 
+type TechnicianLookupRow = {
+  id: string
+  display_name: string | null
+  first_name: string | null
+  last_name: string | null
+}
+
 const listItemSchema = z.object({
   id: z.string().uuid(),
   organization_id: z.string().uuid().nullable().optional(),
   tenant_id: z.string().uuid().nullable().optional(),
   title: z.string().nullable().optional(),
   reservation_type: z.string().nullable().optional(),
+  entry_kind: z.string().nullable().optional(),
+  availability_type: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   source_type: z.string().nullable().optional(),
   source_ticket_id: z.string().uuid().nullable().optional(),
   source_order_id: z.string().uuid().nullable().optional(),
   starts_at: z.string().nullable().optional(),
   ends_at: z.string().nullable().optional(),
+  all_day: z.boolean().nullable().optional(),
   vehicle_id: z.string().uuid().nullable().optional(),
   vehicle_label: z.string().nullable().optional(),
   customer_name: z.string().nullable().optional(),
@@ -143,12 +162,15 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       F.tenant_id,
       F.title,
       F.reservation_type,
+      F.entry_kind,
+      F.availability_type,
       F.status,
       F.source_type,
       F.source_ticket_id,
       F.source_order_id,
       F.starts_at,
       F.ends_at,
+      F.all_day,
       F.vehicle_id,
       F.vehicle_label,
       F.customer_name,
@@ -180,14 +202,18 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
         filters[F.reservation_type] = query.reservationType
       }
 
+      if (query.entryKind) filters[F.entry_kind] = query.entryKind
+      if (query.availabilityType) filters[F.availability_type] = query.availabilityType
+
       if (query.status) filters[F.status] = query.status
       if (query.sourceTicketId) filters[F.source_ticket_id] = query.sourceTicketId
       if (query.sourceOrderId) filters[F.source_order_id] = query.sourceOrderId
-      if (query.startsAtFrom || query.startsAtTo) {
-        const startsAtFilter: Record<string, string> = {}
-        if (query.startsAtFrom) startsAtFilter.$gte = query.startsAtFrom
-        if (query.startsAtTo) startsAtFilter.$lte = query.startsAtTo
-        filters[F.starts_at] = startsAtFilter
+      if (query.startsAtFrom) {
+        filters[F.ends_at] = { $gte: query.startsAtFrom }
+      }
+
+      if (query.startsAtTo) {
+        filters[F.starts_at] = { $lte: query.startsAtTo }
       }
 
       if (query.technicianId) {
@@ -234,10 +260,11 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
       technician_names: Array.isArray((item as ReservationRow & { technician_names?: string[] }).technician_names)
         ? (item as ReservationRow & { technician_names?: string[] }).technician_names
         : [],
-      starts_at: item.starts_at instanceof Date ? item.starts_at.toISOString() : item.starts_at,
-      ends_at: item.ends_at instanceof Date ? item.ends_at.toISOString() : item.ends_at,
-      created_at: item.created_at instanceof Date ? item.created_at.toISOString() : item.created_at,
-      updated_at: item.updated_at instanceof Date ? item.updated_at.toISOString() : item.updated_at,
+      starts_at: toIsoDateTimeString(item.starts_at) ?? item.starts_at,
+      ends_at: toIsoDateTimeString(item.ends_at) ?? item.ends_at,
+      all_day: item.all_day,
+      created_at: toIsoDateTimeString(item.created_at) ?? item.created_at,
+      updated_at: toIsoDateTimeString(item.updated_at) ?? item.updated_at,
     }),
   },
   hooks: {
@@ -272,16 +299,10 @@ const { GET, POST, PUT, DELETE } = makeCrudRoute({
 
       const technicianNameById = new Map<string, string>()
       if (allTechnicianIds.size > 0) {
-        type TechnicianRow = {
-          id: string
-          display_name: string | null
-          first_name: string | null
-          last_name: string | null
-        }
         const knex = (em as any).getConnection().getKnex()
-        const rows = await knex<TechnicianRow>('technicians')
+        const rows = await knex('technicians')
           .select('id', 'display_name', 'first_name', 'last_name')
-          .whereIn('id', [...allTechnicianIds])
+          .whereIn('id', [...allTechnicianIds]) as TechnicianLookupRow[]
         rows.forEach((row) => {
           const fullName = [row.first_name, row.last_name].filter(Boolean).join(' ').trim()
           technicianNameById.set(row.id, row.display_name ?? fullName ?? row.id)

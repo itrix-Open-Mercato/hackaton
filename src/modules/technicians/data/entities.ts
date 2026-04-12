@@ -9,7 +9,6 @@ import {
 } from '@mikro-orm/core'
 
 export type TechnicianLocationStatus = 'in_office' | 'on_trip' | 'at_client' | 'unavailable'
-export type TechnicianAvailabilityDayType = 'work_day' | 'trip' | 'unavailable' | 'holiday'
 
 @Entity({ tableName: 'technicians' })
 @Index({ name: 'tech_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
@@ -144,42 +143,4 @@ export class TechnicianCertification {
 
   @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
   updatedAt: Date = new Date()
-}
-
-@Entity({ tableName: 'technician_availability' })
-@Index({ name: 'tech_avail_technician_idx', properties: ['technicianId'] })
-@Index({ name: 'tech_avail_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
-@Index({ name: 'tech_avail_date_idx', properties: ['tenantId', 'organizationId', 'technicianId', 'date'] })
-export class TechnicianAvailability {
-  [OptionalProps]?: 'dayType' | 'createdAt' | 'updatedAt' | 'deletedAt'
-
-  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
-  id!: string
-
-  @Property({ name: 'tenant_id', type: 'uuid' })
-  tenantId!: string
-
-  @Property({ name: 'organization_id', type: 'uuid' })
-  organizationId!: string
-
-  @Property({ name: 'technician_id', type: 'uuid' })
-  technicianId!: string
-
-  @Property({ name: 'date', type: 'date' })
-  date!: string
-
-  @Property({ name: 'day_type', type: 'text', default: 'work_day' })
-  dayType: TechnicianAvailabilityDayType = 'work_day'
-
-  @Property({ type: 'text', nullable: true })
-  notes?: string | null
-
-  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
-  createdAt: Date = new Date()
-
-  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
-  updatedAt: Date = new Date()
-
-  @Property({ name: 'deleted_at', type: Date, nullable: true })
-  deletedAt?: Date | null
 }

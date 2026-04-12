@@ -10,19 +10,45 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Award, Pencil } from 'lucide-react'
 import type { TechnicianListItem } from '../../../types'
+import { parseDateTimeValue } from '../../../../technician_schedule/lib/dateTime'
 
 type ReservationRecord = {
   id: string
   title: string
-  starts_at: string
-  ends_at: string
+  starts_at?: string | null
+  ends_at?: string | null
+  startsAt?: string | null
+  endsAt?: string | null
+  entry_kind?: 'reservation' | 'availability'
+  availability_type?: 'trip' | 'unavailable' | 'holiday' | null
   status: 'auto_confirmed' | 'confirmed' | 'cancelled'
   source_type: 'service_ticket' | 'service_order' | 'manual'
-  source_ticket_id: string | null
+  source_ticket_id?: string | null
+  sourceTicketId?: string | null
 }
 
 type ReservationListResponse = {
   items: ReservationRecord[]
+}
+
+function getReservationStartValue(reservation: ReservationRecord): string | null {
+  return reservation.starts_at ?? reservation.startsAt ?? null
+}
+
+function getReservationEndValue(reservation: ReservationRecord): string | null {
+  return reservation.ends_at ?? reservation.endsAt ?? null
+}
+
+function getReservationTicketId(reservation: ReservationRecord): string | null {
+  return reservation.source_ticket_id ?? reservation.sourceTicketId ?? null
+}
+
+function formatReservationDateRange(startValue: string | null, endValue: string | null): string {
+  if (!startValue || !endValue) return 'Date unavailable'
+  const startsAt = parseDateTimeValue(startValue)
+  const endsAt = parseDateTimeValue(endValue)
+  if (!startsAt || !endsAt) return 'Date unavailable'
+  return `${startsAt.toLocaleString()} - ${endsAt.toLocaleString()}`
 }
 
 export default function TechnicianDetailPage({ params }: { params?: { id?: string } }) {
@@ -157,15 +183,24 @@ export default function TechnicianDetailPage({ params }: { params?: { id?: strin
                   {(reservationQuery.data?.items ?? []).map((reservation) => (
                     <div key={reservation.id} className="rounded border px-3 py-2 text-sm">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium">{reservation.title}</div>
-                        {reservation.source_ticket_id ? (
-                          <Link href={`/backend/service-tickets/${reservation.source_ticket_id}/edit`} className="text-xs underline underline-offset-2">
+                        {getReservationTicketId(reservation) ? (
+                          <Link
+                            href={`/backend/service-tickets/${getReservationTicketId(reservation)}/edit`}
+                            className="font-medium underline underline-offset-2"
+                          >
+                            {reservation.title}
+                          </Link>
+                        ) : (
+                          <div className="font-medium">{reservation.title}</div>
+                        )}
+                        {getReservationTicketId(reservation) ? (
+                          <Link href={`/backend/service-tickets/${getReservationTicketId(reservation)}/edit`} className="text-xs underline underline-offset-2">
                             {t('technicians.detail.openTicket', 'Open ticket')}
                           </Link>
                         ) : null}
                       </div>
                       <div className="mt-1 text-muted-foreground">
-                        {new Date(reservation.starts_at).toLocaleString()} - {new Date(reservation.ends_at).toLocaleString()}
+                        {formatReservationDateRange(getReservationStartValue(reservation), getReservationEndValue(reservation))}
                       </div>
                     </div>
                   ))}
