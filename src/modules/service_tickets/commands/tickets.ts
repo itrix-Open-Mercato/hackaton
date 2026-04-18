@@ -14,6 +14,7 @@ import { ticketCreateSchema, ticketUpdateSchema } from '../data/validators'
 import { emitServiceTicketEvent } from '../events'
 import { ENTITY_TYPE } from '../lib/constants'
 import { GoogleGeocodingAdapter } from '../lib/geocoding'
+import { cancelTicketReservations, syncTicketReservations } from '../lib/ticketReservations'
 
 // Module-level singleton — one instance per process, no DI overhead needed.
 const geocodingAdapter = new GoogleGeocodingAdapter()
@@ -230,6 +231,12 @@ export const createTicketCommand: CommandHandler<Record<string, unknown>, Servic
       }
     }
 
+    await syncTicketReservations({
+      em,
+      ticket,
+      staffMemberIds: parsed.staff_member_ids ?? [],
+    })
+
     await emitCrudSideEffects({
       dataEngine: de,
       action: 'created',
@@ -380,30 +387,6 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
       })
     }
 
-    await emitCrudSideEffects({
-      dataEngine: de,
-      action: 'updated',
-      entity: ticket,
-      identifiers: {
-        id: String(ticket.id),
-        tenantId: scope.tenantId,
-        organizationId: scope.organizationId,
-      },
-      events: ticketCrudEvents,
-      indexer: ticketCrudIndexer,
-    })
-
-    const statusChanged = oldStatus !== ticket.status
-    if (statusChanged) {
-      await emitServiceTicketEvent('service_tickets.ticket.status_changed', {
-        id: String(ticket.id),
-        tenantId: scope.tenantId,
-        organizationId: scope.organizationId,
-        oldStatus,
-        newStatus: ticket.status,
-      })
-    }
-
     if (parsed.staff_member_ids) {
       const currentAssignments = await em.find(ServiceTicketAssignment, {
         ticket: { id: parsed.id },
@@ -466,6 +449,44 @@ export const updateTicketCommand: CommandHandler<Record<string, unknown>, Servic
       await em.flush()
     }
 
+    const reservationAssignmentIds = parsed.staff_member_ids ?? (
+      await em.find(ServiceTicketAssignment, {
+        ticket: { id: parsed.id },
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+      } as FilterQuery<ServiceTicketAssignment>)
+    ).map((assignment) => assignment.staffMemberId)
+
+    await syncTicketReservations({
+      em,
+      ticket,
+      staffMemberIds: reservationAssignmentIds,
+    })
+
+    await emitCrudSideEffects({
+      dataEngine: de,
+      action: 'updated',
+      entity: ticket,
+      identifiers: {
+        id: String(ticket.id),
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+      },
+      events: ticketCrudEvents,
+      indexer: ticketCrudIndexer,
+    })
+
+    const statusChanged = oldStatus !== ticket.status
+    if (statusChanged) {
+      await emitServiceTicketEvent('service_tickets.ticket.status_changed', {
+        id: String(ticket.id),
+        tenantId: scope.tenantId,
+        organizationId: scope.organizationId,
+        oldStatus,
+        newStatus: ticket.status,
+      })
+    }
+
     return ticket
   },
 }
@@ -490,6 +511,13 @@ export const deleteTicketCommand: CommandHandler<{ body?: Record<string, unknown
       softDeleteField: 'deletedAt',
     })
     if (!ticket) throw new CrudHttpError(404, { error: 'Service ticket not found' })
+
+    await cancelTicketReservations({
+      em: ctx.container.resolve('em') as EntityManager,
+      ticketId: id,
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+    })
 
     await emitCrudSideEffects({
       dataEngine: de,

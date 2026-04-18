@@ -7,7 +7,9 @@ import type { CommandRuntimeContext, CommandBus } from '@open-mercato/shared/lib
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
-import { TechnicianAvailability } from '../../../../data/entities'
+import { TechnicianReservation } from '../../../../../technician_schedule/data/entities'
+import { createUtcDayRange } from '../../../../../technician_schedule/lib/dateTime'
+import { mapAvailabilityReservation } from '../../../../commands/availability'
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['technicians.view'] },
@@ -42,36 +44,54 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const pageSize = Math.min(400, Math.max(1, parseInt(url.searchParams.get('pageSize') ?? '100', 10)))
     const dateFrom = url.searchParams.get('dateFrom') ?? null
     const dateTo = url.searchParams.get('dateTo') ?? null
-    const sortField = url.searchParams.get('sortField') ?? 'date'
+    const sortField = url.searchParams.get('sortField') ?? 'startsAt'
     const sortDir = url.searchParams.get('sortDir') === 'desc' ? 'DESC' : 'ASC'
 
-    const where: FilterQuery<TechnicianAvailability> = {
-      technicianId,
+    const where: FilterQuery<TechnicianReservation> = {
       tenantId: ctx.auth?.tenantId,
       organizationId: ctx.selectedOrganizationId ?? ctx.auth?.orgId,
+      entryKind: 'availability',
       deletedAt: null,
-    } as FilterQuery<TechnicianAvailability>
+    } as FilterQuery<TechnicianReservation>
 
-    if (dateFrom) (where as any).date = { ...(where as any).date, $gte: dateFrom }
-    if (dateTo) (where as any).date = { ...(where as any).date, $lte: dateTo }
+    if (dateFrom) {
+      ;(where as any).endsAt = { $gte: createUtcDayRange(dateFrom).startsAt }
+    }
+    if (dateTo) {
+      ;(where as any).startsAt = { $lte: createUtcDayRange(dateTo).endsAt }
+    }
 
-    const [items, totalCount] = await em.findAndCount(TechnicianAvailability, where, {
+    const [items, totalCount] = await em.findAndCount(TechnicianReservation, where, {
       orderBy: { [sortField]: sortDir } as any,
       limit: pageSize,
       offset: (page - 1) * pageSize,
     })
 
+    const reservationIds = items.map((item) => item.id)
+    const assignments = reservationIds.length > 0
+      ? await em.getConnection().execute<Array<{ reservation_id: string; technician_id: string }>>(
+        `
+          select reservation_id, technician_id
+          from technician_reservation_technicians
+          where tenant_id = ?
+            and organization_id = ?
+            and technician_id = ?
+            and reservation_id in (${reservationIds.map(() => '?').join(', ')})
+        `,
+        [
+          ctx.auth?.tenantId,
+          ctx.selectedOrganizationId ?? ctx.auth?.orgId,
+          technicianId,
+          ...reservationIds,
+        ],
+      )
+      : []
+    const reservationIdsForTechnician = new Set(assignments.map((row) => row.reservation_id))
+    const filteredItems = items.filter((item) => reservationIdsForTechnician.has(item.id))
+
     return NextResponse.json({
-      items: items.map((a) => ({
-        id: a.id,
-        technician_id: a.technicianId,
-        date: typeof a.date === 'string' ? a.date : String(a.date).slice(0, 10),
-        day_type: a.dayType,
-        notes: a.notes ?? null,
-        created_at: a.createdAt?.toISOString?.() ?? null,
-        updated_at: a.updatedAt?.toISOString?.() ?? null,
-      })),
-      totalCount,
+      items: filteredItems.map((a) => mapAvailabilityReservation(a, technicianId)),
+      totalCount: filteredItems.length,
       page,
       pageSize,
     })

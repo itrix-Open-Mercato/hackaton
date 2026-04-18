@@ -1,110 +1,236 @@
 /** @jest-environment node */
+import { TechnicianReservation, TechnicianReservationTechnician } from '../../data/entities'
+import { createReservationCommand, updateReservationCommand } from '../reservations'
+import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { checkReservationOverlap } from '../../lib/overlapCheck'
 
-// Test the buildReservationTitle logic by importing the module and testing via the create command
-// Since buildReservationTitle is a private function, we test it indirectly through the command's behavior
+const TENANT_ID = '11111111-1111-4111-8111-111111111111'
+const ORGANIZATION_ID = '22222222-2222-4222-8222-222222222222'
+const TECHNICIAN_ONE_ID = '33333333-3333-4333-8333-333333333333'
+const TECHNICIAN_TWO_ID = '44444444-4444-4444-8444-444444444444'
+const RESERVATION_ID = '55555555-5555-4555-8555-555555555555'
 
-describe('Reservation auto-title generation', () => {
-  // Inline the logic for direct testing since the function is not exported
-  function buildReservationTitle(input: {
-    title?: string | null
-    reservationType: 'client_visit' | 'internal_work' | 'leave' | 'training'
-    customerName?: string | null
-  }): string {
-    const trimmed = typeof input.title === 'string' ? input.title.trim() : ''
-    if (trimmed.length > 0) return trimmed
+jest.mock('@open-mercato/shared/lib/commands', () => ({
+  registerCommand: jest.fn(),
+}))
 
-    const typeLabelMap: Record<string, string> = {
-      client_visit: 'Client visit',
-      internal_work: 'Internal work',
-      leave: 'Leave',
-      training: 'Training',
-    }
+jest.mock('@open-mercato/shared/lib/i18n/server', () => ({
+  resolveTranslations: jest.fn(async () => ({ translate: (_key: string, fallback: string) => fallback })),
+}))
 
-    return input.customerName?.trim()
-      ? `${typeLabelMap[input.reservationType]} - ${input.customerName.trim()}`
-      : typeLabelMap[input.reservationType]
+jest.mock('@open-mercato/shared/lib/encryption/find', () => ({
+  findOneWithDecryption: jest.fn(),
+  findWithDecryption: jest.fn(),
+}))
+
+jest.mock('../../lib/overlapCheck', () => ({
+  checkReservationOverlap: jest.fn(),
+}))
+
+type ReservationRecord = TechnicianReservation & Record<string, unknown>
+type AssignmentRecord = TechnicianReservationTechnician & Record<string, unknown>
+
+function createEntityManager() {
+  const reservations: ReservationRecord[] = []
+  const assignments: AssignmentRecord[] = []
+
+  const em = {
+    fork: jest.fn(),
+    create: jest.fn((_entity: unknown, data: Record<string, unknown>) => ({ ...data })),
+    persist: jest.fn((entity: Record<string, unknown>) => {
+      if ('reservationId' in entity) {
+        assignments.push(entity as AssignmentRecord)
+        return
+      }
+      reservations.push(entity as ReservationRecord)
+    }),
+    remove: jest.fn((entity: Record<string, unknown>) => {
+      const collection = 'reservationId' in entity ? assignments : reservations
+      const index = collection.indexOf(entity as never)
+      if (index >= 0) collection.splice(index, 1)
+    }),
+    flush: jest.fn().mockResolvedValue(undefined),
+    begin: jest.fn().mockResolvedValue(undefined),
+    commit: jest.fn().mockResolvedValue(undefined),
+    rollback: jest.fn().mockResolvedValue(undefined),
   }
 
-  it('generates title from type and customer name', () => {
-    const title = buildReservationTitle({
-      reservationType: 'client_visit',
-      customerName: 'Acme Corp',
-    })
-    expect(title).toBe('Client visit - Acme Corp')
+  em.fork.mockReturnValue(em)
+  em.persist.mockImplementation((entity: Record<string, unknown>) => {
+    if ('reservationId' in entity) {
+      assignments.push(entity as AssignmentRecord)
+      return
+    }
+    reservations.push(entity as ReservationRecord)
   })
 
-  it('generates title from type only when no customer', () => {
-    const title = buildReservationTitle({
-      reservationType: 'training',
+  return { em: em as unknown, reservations, assignments }
+}
+
+function createCtx(em: unknown) {
+  return {
+    container: {
+      resolve: jest.fn((key: string) => {
+        if (key === 'em') return em
+        return null
+      }),
+    },
+    auth: { tenantId: TENANT_ID, orgId: ORGANIZATION_ID },
+    selectedOrganizationId: ORGANIZATION_ID,
+    organizationIds: [ORGANIZATION_ID],
+    organizationScope: null,
+    request: null,
+  } as any
+}
+
+describe('reservation commands', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.mocked(checkReservationOverlap).mockResolvedValue({
+      hasConflict: false,
+      conflictingTechnicianIds: [],
     })
-    expect(title).toBe('Training')
+    jest.mocked(findWithDecryption).mockImplementation(async (_em, entity, where) => {
+      if (entity === TechnicianReservationTechnician && (where as Record<string, unknown>).reservationId === RESERVATION_ID) {
+        return [{ technicianId: TECHNICIAN_ONE_ID, reservationId: RESERVATION_ID }] as never
+      }
+      return [] as never
+    })
+    jest.mocked(findOneWithDecryption).mockResolvedValue(null as never)
   })
 
-  it('generates title from type when customerName is empty', () => {
-    const title = buildReservationTitle({
-      reservationType: 'leave',
-      customerName: '',
+  it('creates manual availability reservations with unified metadata', async () => {
+    const { em, reservations, assignments } = createEntityManager()
+    const ctx = createCtx(em)
+
+    const result = await createReservationCommand.execute({
+      tenantId: TENANT_ID,
+      organizationId: ORGANIZATION_ID,
+      technicianIds: [TECHNICIAN_ONE_ID],
+      startsAt: '2026-04-15T00:00:00.000Z',
+      endsAt: '2026-04-15T23:59:59.999Z',
+      entryKind: 'availability',
+      availabilityType: 'holiday',
+      allDay: true,
+      status: 'confirmed',
+      sourceType: 'manual',
+    }, ctx)
+
+    expect(result.reservationId).toBeTruthy()
+    expect(reservations).toHaveLength(1)
+    expect(reservations[0]).toMatchObject({
+      entryKind: 'availability',
+      availabilityType: 'holiday',
+      allDay: true,
+      reservationType: null,
+      title: 'Holiday',
     })
-    expect(title).toBe('Leave')
+    expect(assignments).toHaveLength(1)
+    expect(assignments[0]).toMatchObject({
+      technicianId: TECHNICIAN_ONE_ID,
+    })
   })
 
-  it('generates title from type when customerName is whitespace', () => {
-    const title = buildReservationTitle({
-      reservationType: 'internal_work',
-      customerName: '   ',
+  it('rejects manual reservation creation when overlap check reports a conflict', async () => {
+    const { em } = createEntityManager()
+    const ctx = createCtx(em)
+    jest.mocked(checkReservationOverlap).mockResolvedValueOnce({
+      hasConflict: true,
+      conflictingTechnicianIds: [TECHNICIAN_ONE_ID],
     })
-    expect(title).toBe('Internal work')
+
+    await expect(
+      createReservationCommand.execute({
+        tenantId: TENANT_ID,
+        organizationId: ORGANIZATION_ID,
+        technicianIds: [TECHNICIAN_ONE_ID],
+        startsAt: '2026-04-15T09:00:00.000Z',
+        endsAt: '2026-04-15T10:00:00.000Z',
+        reservationType: 'client_visit',
+        entryKind: 'reservation',
+        allDay: false,
+        status: 'confirmed',
+        sourceType: 'manual',
+      }, ctx),
+    ).rejects.toMatchObject({
+      status: 409,
+      body: expect.objectContaining({
+        error: 'OVERLAP_CONFLICT',
+        conflictingTechnicianIds: [TECHNICIAN_ONE_ID],
+      }),
+    })
   })
 
-  it('uses explicit title over auto-generation', () => {
-    const title = buildReservationTitle({
-      title: 'Custom Title',
-      reservationType: 'client_visit',
-      customerName: 'Acme Corp',
-    })
-    expect(title).toBe('Custom Title')
-  })
+  it('updates manual reservations with unified metadata and technician assignments', async () => {
+    const { em, reservations, assignments } = createEntityManager()
+    const ctx = createCtx(em)
+    const reservation = {
+      id: RESERVATION_ID,
+      tenantId: TENANT_ID,
+      organizationId: ORGANIZATION_ID,
+      title: 'Trip',
+      reservationType: null,
+      entryKind: 'availability',
+      availabilityType: 'trip',
+      status: 'confirmed',
+      sourceType: 'manual',
+      sourceTicketId: null,
+      sourceOrderId: null,
+      startsAt: new Date('2026-04-15T00:00:00.000Z'),
+      endsAt: new Date('2026-04-15T23:59:59.999Z'),
+      allDay: true,
+      vehicleId: null,
+      vehicleLabel: null,
+      customerName: null,
+      address: null,
+      notes: null,
+      isActive: true,
+      deletedAt: null,
+      updatedAt: new Date('2026-04-14T10:00:00.000Z'),
+    } as ReservationRecord
+    reservations.push(reservation)
+    assignments.push({
+      reservationId: RESERVATION_ID,
+      technicianId: TECHNICIAN_ONE_ID,
+      organizationId: ORGANIZATION_ID,
+      tenantId: TENANT_ID,
+    } as AssignmentRecord)
 
-  it('trims explicit title', () => {
-    const title = buildReservationTitle({
-      title: '  Custom Title  ',
-      reservationType: 'client_visit',
+    jest.mocked(findOneWithDecryption).mockImplementation(async (_em, entity, where) => {
+      if (entity === TechnicianReservation && (where as Record<string, unknown>).id === RESERVATION_ID) {
+        return reservation as never
+      }
+      return null as never
     })
-    expect(title).toBe('Custom Title')
-  })
-
-  it('falls back to auto-generation when title is empty string', () => {
-    const title = buildReservationTitle({
-      title: '',
-      reservationType: 'client_visit',
-      customerName: 'Acme',
+    jest.mocked(findWithDecryption).mockImplementation(async (_em, entity, where) => {
+      if (entity === TechnicianReservationTechnician && (where as Record<string, unknown>).reservationId === RESERVATION_ID) {
+        return assignments as never
+      }
+      return [] as never
     })
-    expect(title).toBe('Client visit - Acme')
-  })
 
-  it('falls back to auto-generation when title is null', () => {
-    const title = buildReservationTitle({
-      title: null,
-      reservationType: 'training',
+    const result = await updateReservationCommand.execute({
+      id: RESERVATION_ID,
+      technicianIds: [TECHNICIAN_TWO_ID],
+      entryKind: 'availability',
+      availabilityType: 'holiday',
+      allDay: true,
+      startsAt: '2026-04-16T00:00:00.000Z',
+      endsAt: '2026-04-16T23:59:59.999Z',
+      notes: 'Out of office',
+    }, ctx)
+
+    expect(result).toEqual({ reservationId: RESERVATION_ID })
+    expect(reservation).toMatchObject({
+      entryKind: 'availability',
+      availabilityType: 'holiday',
+      allDay: true,
+      notes: 'Out of office',
     })
-    expect(title).toBe('Training')
-  })
-
-  it('trims customer name in auto-generated title', () => {
-    const title = buildReservationTitle({
-      reservationType: 'client_visit',
-      customerName: '  Acme Corp  ',
+    expect(assignments).toHaveLength(1)
+    expect(assignments[0]).toMatchObject({
+      reservationId: RESERVATION_ID,
+      technicianId: TECHNICIAN_TWO_ID,
     })
-    expect(title).toBe('Client visit - Acme Corp')
-  })
-
-  it.each([
-    ['client_visit', 'Client visit'],
-    ['internal_work', 'Internal work'],
-    ['leave', 'Leave'],
-    ['training', 'Training'],
-  ] as const)('maps type %s to label "%s"', (type, label) => {
-    const title = buildReservationTitle({ reservationType: type as any })
-    expect(title).toBe(label)
   })
 })

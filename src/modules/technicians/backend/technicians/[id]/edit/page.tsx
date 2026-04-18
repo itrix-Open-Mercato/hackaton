@@ -25,6 +25,15 @@ type AvailabilityRecord = {
   notes: string | null
 }
 
+type ReservationOverlayRecord = {
+  id: string
+  title: string
+  starts_at: string
+  ends_at: string
+  source_ticket_id: string | null
+  source_order_id: string | null
+}
+
 const DAY_TYPE_COLORS: Record<AvailabilityDayType, string> = {
   work_day: 'bg-green-500 text-white',
   trip: 'bg-blue-500 text-white',
@@ -39,7 +48,7 @@ const DAY_TYPE_LABELS_KEY: Record<AvailabilityDayType, string> = {
   holiday: 'technicians.availability.dayType.holiday',
 }
 
-const DAY_TYPE_CYCLE: Array<AvailabilityDayType | null> = ['work_day', 'trip', 'unavailable', 'holiday', null]
+const DAY_TYPE_CYCLE: Array<AvailabilityDayType | null> = [null, 'trip', 'unavailable', 'holiday']
 
 async function apiFetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...init, credentials: 'include' })
@@ -48,6 +57,37 @@ async function apiFetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(body || `HTTP ${res.status}`)
   }
   return res.json()
+}
+
+function parseDateValue(value: string): Date | null {
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function toDateToken(value: Date): string {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function listDateTokensBetween(startValue: string, endValue: string): string[] {
+  const start = parseDateValue(startValue)
+  const end = parseDateValue(endValue)
+  if (!start || !end) return []
+
+  const current = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const last = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+  if (last.getTime() < current.getTime()) {
+    last.setTime(current.getTime())
+  }
+
+  const tokens: string[] = []
+  while (current.getTime() <= last.getTime()) {
+    tokens.push(toDateToken(current))
+    current.setDate(current.getDate() + 1)
+  }
+  return tokens
 }
 
 function SkillsSection({ technicianId, initialSkills, onRefresh }: { technicianId: string; initialSkills: TechnicianSkillItem[]; onRefresh: () => void }) {
@@ -203,6 +243,19 @@ function AvailabilitySection({ technicianId }: { technicianId: string }) {
     enabled: !!technicianId,
   })
 
+  const { data: reservationData } = useQuery({
+    queryKey: ['technician-reservation-overlays', technicianId, calendarYear, calendarMonth],
+    queryFn: async () => {
+      const startsAtFrom = new Date(Date.UTC(calendarYear, calendarMonth, 1, 0, 0, 0, 0)).toISOString()
+      const startsAtTo = new Date(Date.UTC(calendarYear, calendarMonth, lastDay, 23, 59, 59, 999)).toISOString()
+      const res = await apiFetchJson<{ items: ReservationOverlayRecord[] }>(
+        `/api/technician-reservations?technicianId=${encodeURIComponent(technicianId)}&entryKind=reservation&startsAtFrom=${encodeURIComponent(startsAtFrom)}&startsAtTo=${encodeURIComponent(startsAtTo)}&sortField=starts_at&sortDir=asc&page=1&pageSize=400`,
+      )
+      return res
+    },
+    enabled: !!technicianId,
+  })
+
   const availabilityByDate = React.useMemo(() => {
     const map: Record<string, AvailabilityRecord> = {}
     for (const rec of (availabilityData?.items ?? [])) {
@@ -210,6 +263,16 @@ function AvailabilitySection({ technicianId }: { technicianId: string }) {
     }
     return map
   }, [availabilityData])
+
+  const reservationsByDate = React.useMemo(() => {
+    const map: Record<string, ReservationOverlayRecord[]> = {}
+    for (const reservation of (reservationData?.items ?? [])) {
+      for (const token of listDateTokensBetween(reservation.starts_at, reservation.ends_at)) {
+        map[token] = [...(map[token] ?? []), reservation]
+      }
+    }
+    return map
+  }, [reservationData])
 
   return (
     <div className="rounded-lg border p-4 space-y-4">
@@ -278,19 +341,24 @@ function AvailabilitySection({ technicianId }: { technicianId: string }) {
           for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             const record = availabilityByDate[dateStr]
+            const reservations = reservationsByDate[dateStr] ?? []
             const dayType = record?.day_type ?? null
-            const colorCls = dayType ? DAY_TYPE_COLORS[dayType] : 'bg-muted/30 hover:bg-muted/60 text-foreground'
+            const colorCls = dayType ? DAY_TYPE_COLORS[dayType] : DAY_TYPE_COLORS.work_day
             const isSaving = savingDate === dateStr
             const today = new Date()
             const isToday = today.getFullYear() === calendarYear && today.getMonth() === calendarMonth && today.getDate() === day
+            const title = [
+              dayType ? t(DAY_TYPE_LABELS_KEY[dayType], dayType) : t('technicians.availability.dayType.none', 'No marking'),
+              ...reservations.map((reservation) => reservation.title),
+            ].join(' • ')
 
             cells.push(
               <button
                 key={dateStr}
                 type="button"
                 disabled={isSaving}
-                title={dayType ? t(DAY_TYPE_LABELS_KEY[dayType], dayType) : t('technicians.availability.dayType.none', 'No marking')}
-                className={`relative flex aspect-square items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 ${colorCls} ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                title={title}
+                className={`relative flex aspect-square flex-col items-start justify-between rounded-md p-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 ${colorCls} ${isToday ? 'ring-2 ring-primary ring-offset-1' : ''} ${reservations.length > 0 ? 'shadow-[inset_0_0_0_2px_rgba(255,255,255,0.7)]' : ''}`}
                 onClick={async () => {
                   setSavingDate(dateStr)
                   try {
@@ -319,7 +387,17 @@ function AvailabilitySection({ technicianId }: { technicianId: string }) {
                   }
                 }}
               >
-                {day}
+                <span>{day}</span>
+                {reservations.length > 0 ? (
+                  <span className="w-full space-y-1 text-left">
+                    <span className="inline-flex rounded-full bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {reservations.length} {reservations.length === 1 ? 'reservation' : 'reservations'}
+                    </span>
+                    <span className="block truncate text-[10px] font-medium text-white/90">
+                      {reservations[0]?.title}
+                    </span>
+                  </span>
+                ) : null}
               </button>
             )
           }
@@ -329,7 +407,7 @@ function AvailabilitySection({ technicianId }: { technicianId: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {t('technicians.availability.hint', 'Click a day to cycle through: work day → trip → unavailable → holiday → clear')}
+        {t('technicians.availability.hint', 'Click a day to cycle through: trip → unavailable → holiday → clear')}
       </p>
     </div>
   )

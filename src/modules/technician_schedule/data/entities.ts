@@ -2,12 +2,16 @@ import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/core'
 
 export type TechnicianReservationType = 'client_visit' | 'internal_work' | 'leave' | 'training'
 export type TechnicianReservationStatus = 'auto_confirmed' | 'confirmed' | 'cancelled'
-export type TechnicianReservationSourceType = 'service_order' | 'manual'
+export type TechnicianReservationSourceType = 'service_ticket' | 'service_order' | 'manual'
+export type TechnicianReservationEntryKind = 'reservation' | 'availability'
+export type TechnicianAvailabilityType = 'trip' | 'unavailable' | 'holiday'
 
 @Entity({ tableName: 'technician_reservations' })
 @Index({ name: 'technician_reservations_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({ name: 'technician_reservations_window_idx', properties: ['tenantId', 'organizationId', 'startsAt', 'endsAt'] })
+@Index({ name: 'technician_reservations_source_ticket_idx', properties: ['sourceTicketId'] })
 @Index({ name: 'technician_reservations_source_order_idx', properties: ['sourceOrderId'] })
+@Index({ name: 'technician_reservations_entry_kind_idx', properties: ['tenantId', 'organizationId', 'entryKind'] })
 export class TechnicianReservation {
   @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
   id!: string
@@ -21,14 +25,23 @@ export class TechnicianReservation {
   @Property({ type: 'text' })
   title!: string
 
-  @Property({ name: 'reservation_type', type: 'text' })
-  reservationType!: TechnicianReservationType
+  @Property({ name: 'reservation_type', type: 'text', nullable: true })
+  reservationType?: TechnicianReservationType | null
+
+  @Property({ name: 'entry_kind', type: 'text', default: 'reservation' })
+  entryKind: TechnicianReservationEntryKind = 'reservation'
+
+  @Property({ name: 'availability_type', type: 'text', nullable: true })
+  availabilityType?: TechnicianAvailabilityType | null
 
   @Property({ type: 'text', default: 'confirmed' })
   status: TechnicianReservationStatus = 'confirmed'
 
   @Property({ name: 'source_type', type: 'text', default: 'manual' })
   sourceType: TechnicianReservationSourceType = 'manual'
+
+  @Property({ name: 'source_ticket_id', type: 'uuid', nullable: true })
+  sourceTicketId?: string | null
 
   @Property({ name: 'source_order_id', type: 'uuid', nullable: true })
   sourceOrderId?: string | null
@@ -38,6 +51,9 @@ export class TechnicianReservation {
 
   @Property({ name: 'ends_at', type: Date })
   endsAt!: Date
+
+  @Property({ name: 'all_day', type: 'boolean', default: false })
+  allDay: boolean = false
 
   @Property({ name: 'vehicle_id', type: 'uuid', nullable: true })
   vehicleId?: string | null

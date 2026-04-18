@@ -26,7 +26,7 @@ type TechnicianListResponse = {
 
 type ReservationRecord = {
   id: string
-  source_type: 'service_order' | 'manual'
+  source_type: 'service_ticket' | 'service_order' | 'manual'
   reservation_type: ReservationFormValues['reservationType']
   starts_at: string
   ends_at: string

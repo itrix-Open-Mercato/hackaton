@@ -8,6 +8,7 @@ import type { EntityManager, FilterQuery } from '@mikro-orm/postgresql'
 import { ticketCrudEvents, ticketCrudIndexer } from '../../commands/tickets'
 import { ServiceTicket, ServiceTicketAssignment, ServiceTicketServiceType } from '../../data/entities'
 import { ENTITY_TYPE } from '../../lib/constants'
+import { loadTicketReservationSummaries } from '../../lib/ticketReservations'
 import type { ServiceTicketListItem } from '../../types'
 import {
   createServiceTicketCrudOpenApi,
@@ -306,6 +307,21 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
         ;(item as any).machineServiceTypeIds = stIdsByTicket.get(item.id) ?? []
         item._service_tickets = {
           companyName: item.customerEntityId ? (nameMap.get(item.customerEntityId) ?? null) : null,
+        }
+      }
+
+      if (scope.tenantId && scope.organizationId) {
+        const reservationSummaries = await loadTicketReservationSummaries({
+          em,
+          ticketIds: items.map((item) => item.id),
+          tenantId: scope.tenantId,
+          organizationId: scope.organizationId,
+        })
+
+        for (const item of items) {
+          ;(item as any)._schedule = {
+            reservations: reservationSummaries.get(item.id) ?? [],
+          }
         }
       }
     },

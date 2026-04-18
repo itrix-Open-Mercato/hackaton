@@ -16,22 +16,28 @@ import { ScheduleView, type ScheduleItem, type ScheduleRange, type ScheduleViewM
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
+import { parseDateTimeValue } from '../../lib/dateTime'
 
 type ReservationRow = {
   id: string
   title: string
-  reservation_type: 'client_visit' | 'internal_work' | 'leave' | 'training'
+  reservation_type: 'client_visit' | 'internal_work' | 'leave' | 'training' | null
+  entry_kind?: 'reservation' | 'availability'
+  availability_type?: 'trip' | 'unavailable' | 'holiday' | null
   status: 'auto_confirmed' | 'confirmed' | 'cancelled'
-  source_type: 'service_order' | 'manual'
+  source_type: 'service_ticket' | 'service_order' | 'manual'
+  source_ticket_id: string | null
   source_order_id: string | null
   starts_at: string
   ends_at: string
+  all_day?: boolean
   vehicle_id: string | null
   vehicle_label: string | null
   customer_name: string | null
   address: string | null
   notes: string | null
   technicians: string[]
+  technician_names?: string[]
 }
 
 type ReservationListResponse = {
@@ -54,12 +60,15 @@ type TechnicianListResponse = {
   items: TechnicianOption[]
 }
 
-const RESERVATION_TYPES: Array<ReservationRow['reservation_type']> = [
+type TimedReservationType = NonNullable<ReservationRow['reservation_type']>
+
+const RESERVATION_TYPES: TimedReservationType[] = [
   'client_visit',
   'internal_work',
   'leave',
   'training',
 ]
+const MIN_RENDER_DURATION_MS = 60 * 60 * 1000
 
 function startOfCurrentWeek(): Date {
   const now = new Date()
@@ -80,28 +89,57 @@ function buildDefaultRange(): ScheduleRange {
 }
 
 function mapReservationToScheduleItem(row: ReservationRow, t: (key: string, fallback?: string) => string): ScheduleItem {
+  const startsAt = parseDateTimeValue(row.starts_at) ?? new Date(0)
+  const parsedEndsAt = parseDateTimeValue(row.ends_at)
+  const endsAt = parsedEndsAt && parsedEndsAt.getTime() > startsAt.getTime()
+    ? parsedEndsAt
+    : new Date(startsAt.getTime() + MIN_RENDER_DURATION_MS)
   const kind: ScheduleItem['kind'] =
-    row.reservation_type === 'internal_work'
+    row.entry_kind === 'availability'
+      ? row.availability_type === 'trip'
+        ? 'availability'
+        : 'exception'
+      : row.reservation_type === 'internal_work'
       ? 'availability'
       : row.reservation_type === 'leave'
         ? 'exception'
         : 'event'
 
-  const subtitle = row.customer_name ?? row.vehicle_label ?? null
+  const subtitle = row.entry_kind === 'availability'
+    ? null
+    : row.customer_name ?? row.vehicle_label ?? null
   const title = subtitle ? `${row.title} - ${subtitle}` : row.title
 
   return {
     id: row.id,
     kind,
     title,
-    startsAt: new Date(row.starts_at),
-    endsAt: new Date(row.ends_at),
+    startsAt,
+    endsAt,
     status: row.status === 'cancelled' ? 'cancelled' : 'confirmed',
-    linkLabel: row.source_order_id ? t('technicianSchedule.calendar.orderLink', 'Order') : undefined,
+    linkLabel: row.source_ticket_id
+      ? t('technicianSchedule.calendar.ticketLink', 'Ticket')
+      : row.source_order_id
+        ? t('technicianSchedule.calendar.orderLink', 'Order')
+        : undefined,
     metadata: {
       reservation: row,
     },
   }
+}
+
+function formatReservationDateRange(startValue: string, endValue: string): string {
+  const startsAt = parseDateTimeValue(startValue)
+  const endsAt = parseDateTimeValue(endValue)
+  if (!startsAt || !endsAt) return 'Date unavailable'
+  return `${startsAt.toLocaleString()} - ${endsAt.toLocaleString()}`
+}
+
+function getReservationDurationMinutes(startValue: string, endValue: string): number {
+  const startsAt = parseDateTimeValue(startValue)
+  const endsAt = parseDateTimeValue(endValue)
+  if (!startsAt || !endsAt) return 0
+  return Math.max(0, Math.round((endsAt.getTime() - startsAt.getTime()) / 60000))
 }
 
 function formatReservationStatus(
@@ -141,7 +179,7 @@ export default function TechnicianSchedulePage() {
   const [view, setView] = React.useState<ScheduleViewMode>('week')
   const [range, setRange] = React.useState<ScheduleRange>(() => buildDefaultRange())
   const [selectedTechnicianId, setSelectedTechnicianId] = React.useState<string | null>(null)
-  const [selectedTypes, setSelectedTypes] = React.useState<Array<ReservationRow['reservation_type']>>(RESERVATION_TYPES)
+  const [selectedTypes, setSelectedTypes] = React.useState<TimedReservationType[]>(RESERVATION_TYPES)
   const [selectedReservation, setSelectedReservation] = React.useState<ReservationRow | null>(null)
 
   const technicianQuery = useQuery<TechnicianListResponse>({
@@ -239,11 +277,16 @@ export default function TechnicianSchedulePage() {
     </>
   )
 
-  const typeLabels: Record<ReservationRow['reservation_type'], string> = {
+  const typeLabels: Record<NonNullable<ReservationRow['reservation_type']>, string> = {
     client_visit: t('technicianSchedule.type.client_visit', 'Client visit'),
     internal_work: t('technicianSchedule.type.internal_work', 'Internal work'),
     leave: t('technicianSchedule.type.leave', 'Leave'),
     training: t('technicianSchedule.type.training', 'Training'),
+  }
+  const availabilityTypeLabels: Record<'trip' | 'unavailable' | 'holiday', string> = {
+    trip: t('technicians.availability.dayType.trip', 'Trip'),
+    unavailable: t('technicians.availability.dayType.unavailable', 'Unavailable'),
+    holiday: t('technicians.availability.dayType.holiday', 'Holiday'),
   }
 
   return (
@@ -349,7 +392,12 @@ export default function TechnicianSchedulePage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{typeLabels[selectedReservation.reservation_type]}</Badge>
+                {selectedReservation.reservation_type ? (
+                  <Badge variant="secondary">{typeLabels[selectedReservation.reservation_type]}</Badge>
+                ) : null}
+                {selectedReservation.entry_kind === 'availability' && selectedReservation.availability_type ? (
+                  <Badge variant="secondary">{availabilityTypeLabels[selectedReservation.availability_type]}</Badge>
+                ) : null}
                 <Badge variant={selectedReservation.status === 'cancelled' ? 'destructive' : 'outline'}>
                   {formatReservationStatus(selectedReservation.status, t)}
                 </Badge>
@@ -358,22 +406,22 @@ export default function TechnicianSchedulePage() {
                 <div>
                   <div className="font-medium">{t('technicianSchedule.details.time', 'Time')}</div>
                   <div className="text-muted-foreground">
-                    {new Date(selectedReservation.starts_at).toLocaleString()} - {new Date(selectedReservation.ends_at).toLocaleString()}
+                    {formatReservationDateRange(selectedReservation.starts_at, selectedReservation.ends_at)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {Math.max(0, Math.round((new Date(selectedReservation.ends_at).getTime() - new Date(selectedReservation.starts_at).getTime()) / 60000))} min
+                    {getReservationDurationMinutes(selectedReservation.starts_at, selectedReservation.ends_at)} min
                   </div>
                 </div>
                 <div>
                   <div className="font-medium">{t('technicianSchedule.details.technicians', 'Technicians')}</div>
                   <div className="flex flex-wrap gap-2 text-muted-foreground">
-                    {selectedReservation.technicians.length > 0 ? selectedReservation.technicians.map((id) => (
+                    {selectedReservation.technicians.length > 0 ? selectedReservation.technicians.map((id, index) => (
                       <Link
                         key={id}
                         href={`/backend/technicians/${id}`}
                         className="underline underline-offset-2"
                       >
-                        {technicianNameById.get(id) ?? id}
+                        {selectedReservation.technician_names?.[index] ?? technicianNameById.get(id) ?? id}
                       </Link>
                     )) : '—'}
                   </div>
@@ -399,9 +447,13 @@ export default function TechnicianSchedulePage() {
                   </div>
                 </div>
                 <div>
-                  <div className="font-medium">{t('technicianSchedule.details.order', 'Order')}</div>
+                  <div className="font-medium">{t('technicianSchedule.details.source', 'Source')}</div>
                   <div className="text-muted-foreground">
-                    {selectedReservation.source_order_id ? (
+                    {selectedReservation.source_ticket_id ? (
+                      <Link href={`/backend/service-tickets/${selectedReservation.source_ticket_id}/edit`} className="underline underline-offset-2">
+                        {selectedReservation.source_ticket_id}
+                      </Link>
+                    ) : selectedReservation.source_order_id ? (
                       <Link href={`/backend/service-orders/${selectedReservation.source_order_id}`} className="underline underline-offset-2">
                         {selectedReservation.source_order_id}
                       </Link>

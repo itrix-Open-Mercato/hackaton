@@ -5,10 +5,51 @@ import { useQuery } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
+import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Award, Pencil } from 'lucide-react'
 import type { TechnicianListItem } from '../../../types'
+import { parseDateTimeValue } from '../../../../technician_schedule/lib/dateTime'
+
+type ReservationRecord = {
+  id: string
+  title: string
+  starts_at?: string | null
+  ends_at?: string | null
+  startsAt?: string | null
+  endsAt?: string | null
+  entry_kind?: 'reservation' | 'availability'
+  availability_type?: 'trip' | 'unavailable' | 'holiday' | null
+  status: 'auto_confirmed' | 'confirmed' | 'cancelled'
+  source_type: 'service_ticket' | 'service_order' | 'manual'
+  source_ticket_id?: string | null
+  sourceTicketId?: string | null
+}
+
+type ReservationListResponse = {
+  items: ReservationRecord[]
+}
+
+function getReservationStartValue(reservation: ReservationRecord): string | null {
+  return reservation.starts_at ?? reservation.startsAt ?? null
+}
+
+function getReservationEndValue(reservation: ReservationRecord): string | null {
+  return reservation.ends_at ?? reservation.endsAt ?? null
+}
+
+function getReservationTicketId(reservation: ReservationRecord): string | null {
+  return reservation.source_ticket_id ?? reservation.sourceTicketId ?? null
+}
+
+function formatReservationDateRange(startValue: string | null, endValue: string | null): string {
+  if (!startValue || !endValue) return 'Date unavailable'
+  const startsAt = parseDateTimeValue(startValue)
+  const endsAt = parseDateTimeValue(endValue)
+  if (!startsAt || !endsAt) return 'Date unavailable'
+  return `${startsAt.toLocaleString()} - ${endsAt.toLocaleString()}`
+}
 
 export default function TechnicianDetailPage({ params }: { params?: { id?: string } }) {
   const t = useT()
@@ -17,6 +58,21 @@ export default function TechnicianDetailPage({ params }: { params?: { id?: strin
   const { data, isLoading } = useQuery({
     queryKey: ['technician-detail', id],
     queryFn: () => fetchCrudList<TechnicianListItem>('technicians/technicians', { id: String(id), pageSize: 1 }),
+    enabled: !!id,
+  })
+  const reservationQuery = useQuery<ReservationListResponse>({
+    queryKey: ['technician-detail-reservations', id],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        technicianId: String(id),
+        page: '1',
+        pageSize: '10',
+        sortField: 'starts_at',
+        sortDir: 'asc',
+      })
+      const call = await apiCallOrThrow<ReservationListResponse>(`/api/technician-reservations?${params.toString()}`)
+      return call.result ?? { items: [] }
+    },
     enabled: !!id,
   })
 
@@ -112,6 +168,40 @@ export default function TechnicianDetailPage({ params }: { params?: { id?: strin
                           {new Date(c.expiresAt).toLocaleDateString()}
                         </span>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <h3 className="mb-3 text-sm font-medium">{t('technicians.detail.schedule', 'Upcoming reservations')}</h3>
+              {(reservationQuery.data?.items ?? []).length === 0 ? (
+                <span className="text-sm text-muted-foreground">{t('technicians.detail.scheduleEmpty', 'No reservations found.')}</span>
+              ) : (
+                <div className="space-y-2">
+                  {(reservationQuery.data?.items ?? []).map((reservation) => (
+                    <div key={reservation.id} className="rounded border px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        {getReservationTicketId(reservation) ? (
+                          <Link
+                            href={`/backend/service-tickets/${getReservationTicketId(reservation)}/edit`}
+                            className="font-medium underline underline-offset-2"
+                          >
+                            {reservation.title}
+                          </Link>
+                        ) : (
+                          <div className="font-medium">{reservation.title}</div>
+                        )}
+                        {getReservationTicketId(reservation) ? (
+                          <Link href={`/backend/service-tickets/${getReservationTicketId(reservation)}/edit`} className="text-xs underline underline-offset-2">
+                            {t('technicians.detail.openTicket', 'Open ticket')}
+                          </Link>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 text-muted-foreground">
+                        {formatReservationDateRange(getReservationStartValue(reservation), getReservationEndValue(reservation))}
+                      </div>
                     </div>
                   ))}
                 </div>
